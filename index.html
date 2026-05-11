@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Betting Tracker — Thomas Nendick</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #0b0d10;
+    --panel: #14181d;
+    --border: #232a32;
+    --text: #e8edf2;
+    --muted: #8a939c;
+    --accent: #6ee7b7;
+    --link: #93c5fd;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 20px;
+  }
+  .wrap { max-width: 720px; width: 100%; }
+  h1 { font-size: 32px; margin: 0 0 8px; letter-spacing: -0.02em; }
+  .sub { color: var(--muted); margin: 0 0 32px; font-size: 15px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  a.card {
+    display: block;
+    padding: 20px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    text-decoration: none;
+    color: var(--text);
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  a.card:hover {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+  }
+  .card h2 { font-size: 16px; margin: 0 0 6px; font-weight: 600; }
+  .card p { font-size: 13px; color: var(--muted); margin: 0; }
+  .notice {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .notice strong { color: var(--text); display: block; margin-bottom: 4px; }
+  .notice code {
+    background: rgba(255,255,255,0.06);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  footer {
+    margin-top: 32px;
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+  }
+  footer a { color: var(--link); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Betting Tracker</h1>
+  <p class="sub">Personal sports-bet system — dashboard, CLV analysis, multi-sportsbook odds refresh.</p>
+
+  <div class="grid">
+    <a class="card" href="betting-tracker.html">
+      <h2>Dashboard →</h2>
+      <p>W/L record, P&amp;L, ROI, open bets, history log</p>
+    </a>
+    <a class="card" href="clv-tracker.html">
+      <h2>CLV Tracker →</h2>
+      <p>Closing line value, edge analysis per bet</p>
+    </a>
+    <a class="card" href="recap-report.html">
+      <h2>Recap Report →</h2>
+      <p>Historical performance breakdown</p>
+    </a>
+  </div>
+
+  <div class="notice">
+    <strong>Live demo, no data</strong>
+    The UI is browsable, but data endpoints (bets, odds, CLV) require the local Python backend. Source code is on <a href="https://github.com/nendy55555/betting-tracker" style="color: var(--link)">GitHub</a>.
+  </div>
+
+  <footer>
+    <a href="https://github.com/nendy55555/betting-tracker">github.com/nendy55555/betting-tracker</a>
+  </footer>
+</div>
+</body>
+</html>
