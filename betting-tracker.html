@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BetTracker Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<!-- Multi-user shim — must load before any /api/* fetches fire -->
+<script src="js/user-context.js"></script>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!--
+  ╔══════════════════════════════════════════════════════════════════╗
+  ║  TAB REGISTRY — DO NOT REMOVE TABS DURING REBUILDS             ║
+  ║                                                                  ║
+  ║  Required tabs (preserve on every rebuild):                      ║
+  ║    1. home         — Main dashboard with open/settled bets       ║
+  ║    2. analytics    — MERGED: Highlights + Analytics + Deep       ║
+  ║                       (inner divs keep IDs #highlights-tab and   ║
+  ║                       #deepanalysis-tab so legacy JS still works)║
+  ║    3. upcoming     — Today's games + lines (label: "Upcoming Games") ║
+  ║    4. futures      — Futures bets with live odds tracking        ║
+  ║    5. betlog       — Full bet log table                          ║
+  ║                                                                  ║
+  ║  Removed (code retained for reinstatement):                      ║
+  ║    - nflhistory  → js/dashboard.js renderNFLHistory()            ║
+  ║                                                                  ║
+  ║  Each tab requires:                                              ║
+  ║    - A <button class="nav-btn"> in .nav                          ║
+  ║    - A <div class="tab-content" id="[name]-tab">                 ║
+  ║    - A render function called from switchTab() and renderAll()   ║
+  ║                                                                  ║
+  ║  NEVER drop a tab. NEVER rewrite this file without all tabs.    ║
+  ╚══════════════════════════════════════════════════════════════════╝
+-->
+
+<div class="header">
+  <div class="logo"><span>Bet</span>Tracker<span style="color:var(--blue)"> Pro</span></div>
+  <div class="nav">
+    <button class="nav-btn active" data-tab="home" onclick="switchTab('home')">Home</button>
+    <button class="nav-btn" data-tab="analytics" onclick="switchTab('analytics')">Analytics</button>
+    <button class="nav-btn" data-tab="upcoming" onclick="switchTab('upcoming')">Upcoming Games</button>
+    <button class="nav-btn" data-tab="futures" onclick="switchTab('futures')">Futures</button>
+    <button class="nav-btn" data-tab="betlog" onclick="switchTab('betlog')">Bet Log</button>
+  </div>
+  <div class="header-tools" style="display:flex;gap:8px;align-items:center">
+    <a class="nav-btn" href="clv-tracker.html" style="text-decoration:none">CLV</a>
+    <a class="nav-btn" href="recap-report.html" style="text-decoration:none">Recap</a>
+    <button class="settings-btn" onclick="toggleSettings()">Settings</button>
+  </div>
+</div>
+
+<div class="content">
+  <div class="tab-content active" id="home-tab">
+    <div class="home-controls-bar">
+      <button class="filter-toggle-btn" id="homeFilterToggle" onclick="toggleHomeFilter()"><span class="filter-dot"></span> Filters</button>
+      <div class="tp-btns">
+        <button class="tp-btn active" data-period="7" onclick="setHomePeriod('7')">This Week</button>
+        <button class="tp-btn" data-period="31" onclick="setHomePeriod('31')">This Month</button>
+        <button class="tp-btn" data-period="90" onclick="setHomePeriod('90')">3 Months</button>
+        <button class="tp-btn" data-period="all" onclick="setHomePeriod('all')">All Time</button>
+      </div>
+    </div>
+    <div id="homeFilterBar" class="chart-filter-bar collapsed" style="margin-bottom:12px"></div>
+    <div class="dash-stats" id="dashStats"></div>
+    <div class="home-grid">
+      <div class="panel">
+        <div class="panel-header">
+          <span>Open Bets <span class="count" id="openCount">0</span></span>
+          <div class="header-actions">
+            <button class="refresh-btn" onclick="refreshAndSettle()" title="Check scores & auto-settle finished games">&#x21bb; Refresh</button>
+          </div>
+        </div>
+        <div class="panel-body" id="openBetsList"></div>
+      </div>
+      <div class="center-col">
+        <div class="chatbot">
+          <div class="chat-header"><span class="dot"></span> Bet Entry & Analysis</div>
+          <div class="chat-messages" id="chatMessages"></div>
+          <div class="chat-input-area">
+            <div class="chat-input-wrap">
+              <textarea id="chatInput" placeholder="Type a bet, paste from Bovada, or ask a question..." rows="1"></textarea>
+              <button class="send-btn" onclick="sendMessage()">Send</button>
+            </div>
+          </div>
+        </div>
+        <div class="charts-grid">
+          <div class="chart-card"><div class="chart-title" id="roiChartTitle">ROI Over Time</div><canvas id="roiChart"></canvas></div>
+          <div class="chart-card"><div class="chart-title" id="bankrollChartTitle">Cumulative P/L</div><canvas id="bankrollChart"></canvas></div>
+          <div class="chart-card"><div class="chart-title" id="wlChartTitle">W/L Record Over Time</div><canvas id="wlChart"></canvas></div>
+          <div class="chart-card"><div class="chart-title" id="sportChartTitle">P/L by Sport</div><canvas id="sportChart"></canvas></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">Settled Bets <span class="count" id="settledCount">0</span></div>
+        <div class="filter-row" id="filterRow">
+          <button class="filter-btn active" onclick="setFilter('all')">All</button>
+          <button class="filter-btn" onclick="setFilter('W')">Wins</button>
+          <button class="filter-btn" onclick="setFilter('L')">Losses</button>
+          <button class="filter-btn" onclick="setFilter('P')">Pushes</button>
+        </div>
+        <div class="panel-body" id="settledBetsList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="futures-tab">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h2 style="font-size:1.2rem">Futures Bets</h2>
+      <div style="position:relative">
+        <button class="nav-btn" id="steamAlertToggle" onclick="toggleSteamAlerts()" style="font-size:.8rem">Odds Movement <span id="steamBadge" class="steam-badge" style="display:none">0</span></button>
+      </div>
+    </div>
+    <div class="steam-alerts" id="steamAlertsList" style="display:none"></div>
+    <div class="futures-grid" id="futuresList"></div>
+  </div>
+
+  <div class="tab-content" id="analytics-tab">
+    <div id="summaryDashCard" style="margin-bottom:16px"></div>
+
+    <!-- ===== HIGHLIGHTS SECTION (merged) ===== -->
+    <div id="highlights-tab" style="margin-bottom:32px">
+      <h2 style="margin-bottom:16px;font-size:1.2rem">Highlights</h2>
+      <div id="highlightsContent"></div>
+    </div>
+
+    <!-- ===== ANALYTICS SECTION ===== -->
+    <div style="margin-bottom:32px">
+      <h2 style="margin-bottom:16px;font-size:1.2rem">Analytics</h2>
+      <div id="analyticsFilterBar" class="chart-filter-bar"></div>
+      <div class="analytics-grid">
+        <div class="analytics-card"><div class="chart-title" id="cumPLTitle">Cumulative Profit/Loss</div><canvas id="cumPLChart"></canvas></div>
+        <div class="analytics-card"><div class="chart-title" id="winRateSportTitle">Win Rate by Sport</div><canvas id="winRateSportChart"></canvas></div>
+        <div class="analytics-card"><div class="chart-title" id="betSizeTitle">Bet Size Distribution</div><canvas id="betSizeChart"></canvas></div>
+        <div class="analytics-card"><div class="chart-title" id="weeklyTitle">Weekly Performance</div><canvas id="weeklyChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ===== DEEP ANALYSIS SECTION (merged) ===== -->
+    <div id="deepanalysis-tab" style="margin-bottom:16px">
+      <h2 style="margin-bottom:16px;font-size:1.2rem">Deep Analysis</h2>
+      <div id="deepFilterBar" class="chart-filter-bar"></div>
+      <div class="analytics-grid" style="margin-bottom:16px">
+        <div class="analytics-card"><div class="chart-title" id="oddsRangeTitle">P/L by Odds Range</div><canvas id="oddsRangeChart"></canvas></div>
+        <div class="analytics-card"><div class="chart-title" id="betTypeROITitle">ROI by Bet Type</div><canvas id="betTypeROIChart"></canvas></div>
+        <div class="analytics-card"><div class="chart-title" id="dowTitle">P/L by Day of Week</div><canvas id="dowChart"></canvas></div>
+        <div class="analytics-card"><div class="chart-title" id="monthlyTitle">Monthly P/L</div><canvas id="monthlyChart"></canvas></div>
+        <div class="analytics-card"><div class="chart-title">CLV Trend (Closing Line Value)</div><canvas id="clvTrendChart"></canvas></div>
+        <div class="analytics-card"><div class="chart-title">Your Edge vs Implied Probability</div><canvas id="edgeModelChart"></canvas></div>
+      </div>
+      <div id="parlayCorrelationSection" style="margin-bottom:16px"></div>
+      <div class="deep-breakdown-grid" id="deepBreakdownGrid"></div>
+    </div>
+  </div>
+
+  <!-- NFL History tab removed 2026-05-10 — code preserved in js/dashboard.js (renderNFLHistory etc.) if you want to reinstate -->
+
+  <div class="tab-content" id="upcoming-tab">
+    <div class="upcoming-header">
+      <div>
+        <div class="upcoming-date-label" id="upcomingDateLabel">Today's Games</div>
+        <div class="upcoming-last-updated" id="upcomingLastUpdated"></div>
+      </div>
+      <button class="upcoming-refresh-btn" id="upcomingRefreshBtn" onclick="refreshUpcomingGames()">&#x21bb; Refresh</button>
+    </div>
+    <div class="upcoming-sport-filters" id="upcomingSportFilters">
+      <button class="sport-pill active" data-sport="all" onclick="setUpcomingFilter('all')"><span class="pill-icon">🏆</span> Top Games</button>
+      <button class="sport-pill" data-sport="NFL" onclick="setUpcomingFilter('NFL')"><span class="pill-icon">🏈</span> NFL</button>
+      <button class="sport-pill" data-sport="NBA" onclick="setUpcomingFilter('NBA')"><span class="pill-icon">🏀</span> NBA</button>
+      <button class="sport-pill" data-sport="CBB" id="cbbPill" onclick="setUpcomingFilter('CBB')"><span class="pill-icon">🏀</span> CBB</button>
+      <button class="sport-pill" data-sport="Soccer" onclick="setUpcomingFilter('Soccer')"><span class="pill-icon">⚽</span> Soccer</button>
+    </div>
+    <div id="upcomingGamesList">
+      <div class="upcoming-loading"><div class="upcoming-spinner"></div><br>Loading today's games...</div>
+    </div>
+  </div>
+
+  <!-- ===== BET LOG TAB ===== -->
+  <div class="tab-content" id="betlog-tab">
+    <div class="betlog-toolbar">
+      <div class="betlog-search-wrap">
+        <input type="text" id="betlogSearch" class="betlog-search" placeholder="Search matchup, pick, sport…" oninput="renderBetLog()">
+      </div>
+      <div class="betlog-filters">
+        <button class="bl-filter-btn active" data-result="all"   onclick="setBetLogFilter('all')">All</button>
+        <button class="bl-filter-btn"        data-result="open"  onclick="setBetLogFilter('open')">Pending</button>
+        <button class="bl-filter-btn"        data-result="W"     onclick="setBetLogFilter('W')">Won</button>
+        <button class="bl-filter-btn"        data-result="L"     onclick="setBetLogFilter('L')">Lost</button>
+        <button class="bl-filter-btn"        data-result="P"     onclick="setBetLogFilter('P')">Push</button>
+      </div>
+      <div class="betlog-count" id="betlogCount"></div>
+    </div>
+    <div class="betlog-table-wrap">
+      <table class="betlog-table" id="betlogTable">
+        <thead>
+          <tr>
+            <th class="bl-sortable" data-col="date"    onclick="setBetLogSort('date')">Date <span class="bl-sort-icon" id="blsi-date">↓</span></th>
+            <th>Sport</th>
+            <th>Type</th>
+            <th>Matchup</th>
+            <th>Pick</th>
+            <th class="bl-sortable bl-num" data-col="odds"  onclick="setBetLogSort('odds')">Odds <span class="bl-sort-icon" id="blsi-odds"></span></th>
+            <th class="bl-sortable bl-num" data-col="stake" onclick="setBetLogSort('stake')">Stake <span class="bl-sort-icon" id="blsi-stake"></span></th>
+            <th class="bl-num">To Win</th>
+            <th class="bl-sortable bl-num" data-col="pl"    onclick="setBetLogSort('pl')">P/L <span class="bl-sort-icon" id="blsi-pl"></span></th>
+            <th>Result</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="betlogBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <h2>Settings</h2>
+    <label>Default Stake ($)</label>
+    <input type="number" id="defaultStake" value="50" min="1">
+    <label>Claude API Key <span style="font-weight:400;color:var(--text3)">(optional AI fallback — local analyzer handles most questions free. Get key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>. Uses Haiku; 30-call daily cap.)</span></label>
+    <input type="password" id="claudeApiKey" placeholder="sk-ant-...">
+    <label>The Odds API Key <span style="font-weight:400;color:var(--text3)">(<a href="https://the-odds-api.com" target="_blank" style="color:var(--accent)">free at the-odds-api.com</a> — 500 req/month, covers NBA/NCAAB/Soccer)</span></label>
+    <input type="password" id="oddsApiKey" placeholder="Enter free key for reliable live odds">
+    <div style="font-size:.75rem;color:var(--text2);padding:4px 0 8px">Without a key, odds fall back to Bovada &amp; ESPN (less reliable). Odds refresh on Futures tab open.</div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         DATA STATUS PANEL — surfaces scraper exit codes + Odds API budget.
+         Added 2026-04-20 as part of the post-hardening follow-ups.
+         Logic lives in js/status-panel.js. No render if server unreachable.
+         ═══════════════════════════════════════════════════════════════════ -->
+    <div id="statusPanel" style="margin-top:14px;padding:12px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.02)">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+        <div style="font-weight:600;font-size:.9rem">Data Status</div>
+        <button onclick="btRefreshBudget()" style="font-size:.7rem;color:var(--text3);background:none;border:none;cursor:pointer;padding:0">↻ refresh</button>
+      </div>
+      <div id="statusBudget" style="font-size:.8rem;color:var(--text2);margin-bottom:10px">Odds API: <span id="budgetDisplay">—</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <button class="status-action-btn" onclick="btTriggerScraper('locks25')">Refresh Locks25</button>
+        <button class="status-action-btn" onclick="btTriggerScraper('bovada')">Refresh Bovada</button>
+        <button class="status-action-btn" onclick="btTriggerClv()" style="grid-column:span 2">Refresh CLV Odds</button>
+      </div>
+      <div id="statusBadges" style="display:flex;flex-direction:column;gap:4px;font-size:.75rem"></div>
+    </div>
+
+    <div class="modal-btns">
+      <button class="danger-btn" onclick="clearAllData()">Clear All Data</button>
+      <button class="danger-btn" id="syncExcelBtn" onclick="syncFromExcel()" style="background:rgba(0,150,255,.15);color:#4da6ff;border:1px solid rgba(0,150,255,.3)">⟳ Sync from Excel</button>
+      <button class="cancel-btn" onclick="toggleSettings()">Close</button>
+      <button class="save-btn" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     EDIT BET MODAL — manually correct parsed fields on any open or settled
+     bet. Saved values write to the user's xlsx via POST /api/bets/update.
+     Built 2026-05-10. State lives in window.__editBetState (see js/bets.js).
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="editBetModal">
+  <div class="modal" style="max-width:540px">
+    <h2 style="display:flex;justify-content:space-between;align-items:center">
+      <span>Edit Bet</span>
+      <span id="editBetSheetTag" style="font-size:.7rem;font-weight:500;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,.06);color:var(--text2)"></span>
+    </h2>
+    <div style="font-size:.75rem;color:var(--text3);margin:-4px 0 12px">Fix anything the parser got wrong. Changes write directly to your Excel file.</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 14px">
+      <div>
+        <label>Sport</label>
+        <input type="text" id="ebSport" placeholder="NBA, NFL, NCAAMB...">
+      </div>
+      <div>
+        <label>Bet Type</label>
+        <input type="text" id="ebBetType" placeholder="Spread, ML, Total, Parlay...">
+      </div>
+      <div style="grid-column:span 2">
+        <label>Teams / Event</label>
+        <input type="text" id="ebTeams">
+      </div>
+      <div>
+        <label>Line</label>
+        <input type="text" id="ebLine" placeholder="-4.5, ML, Over 220.5">
+      </div>
+      <div>
+        <label>Odds</label>
+        <input type="text" id="ebOdds" placeholder="-110 or +150">
+      </div>
+      <div>
+        <label>Risk ($)</label>
+        <input type="number" id="ebStake" step="0.01" min="0">
+      </div>
+      <div>
+        <label>To Win ($)</label>
+        <input type="number" id="ebToWin" step="0.01" min="0">
+      </div>
+      <div id="ebGameTimeWrap">
+        <label>Game Time</label>
+        <input type="text" id="ebGameTime" placeholder="Mar-22-2026 07:00 PM">
+      </div>
+      <div id="ebSettledDateWrap" style="display:none">
+        <label>Settled Date</label>
+        <input type="text" id="ebSettledDate" placeholder="Mar-22-2026">
+      </div>
+      <div>
+        <label>Status</label>
+        <input type="text" id="ebStatus" placeholder="Open, Won, Lost, Push">
+      </div>
+      <div id="ebWinLossWrap" style="display:none">
+        <label>Win/Loss ($)</label>
+        <input type="number" id="ebWinLoss" step="0.01" placeholder="Positive=win, negative=loss">
+      </div>
+      <div style="grid-column:span 2">
+        <label>Notes</label>
+        <input type="text" id="ebNotes">
+      </div>
+      <div id="ebSourceWrap" style="grid-column:span 2;display:none">
+        <label>Source</label>
+        <input type="text" id="ebSource" placeholder="Locks25, Bovada, Manual">
+      </div>
+    </div>
+
+    <div id="ebError" style="display:none;margin-top:12px;padding:8px 10px;border-radius:6px;background:rgba(255,71,87,.12);color:#ff6b7a;font-size:.78rem"></div>
+    <div id="ebMeta" style="margin-top:10px;font-size:.7rem;color:var(--text3)"></div>
+
+    <div class="modal-btns">
+      <button class="cancel-btn" onclick="closeEditBet()">Cancel</button>
+      <button class="save-btn" id="ebSaveBtn" onclick="saveEditBet()">Save</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- JS Modules (load order matters) -->
+<script src="js/store.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/data.js"></script>
+<script src="js/espn.js"></script>
+<script src="js/parsers.js"></script>
+<script src="js/chat.js"></script>
+<script src="js/bets.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/analytics.js"></script>
+<script src="js/live.js"></script>
+<script src="js/upcoming.js"></script>
+<script src="js/sync.js"></script>
+<script src="js/status-panel.js"></script>
+
+<!-- Multi-user UI: landing screen, account switcher, filters, team logos, leaderboard -->
+<script src="js/team-logos.js"></script>
+<script src="js/multiuser-ui.js"></script>
+
+<!-- Futures engine: auto-detect stale futures + one-click settle -->
+<script src="js/futures-engine-ui.js"></script>
+
+</body>
+</html>

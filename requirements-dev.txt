@@ -1,0 +1,7 @@
+# Dev-only dependencies. Install alongside requirements.txt for running the test suite.
+#   pip install -r requirements.txt -r requirements-dev.txt
+#   pytest -q
+-r requirements.txt
+
+pytest==8.3.3
+pytest-mock==3.14.0

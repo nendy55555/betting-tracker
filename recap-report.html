@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Betting Recap Report</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <!-- Multi-user shim — routes /api/* fetches to the active user's data -->
+  <script src="js/user-context.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0c0e14;
+      --surface:  #13161f;
+      --surface2: #1a1e2b;
+      --border:   rgba(255,255,255,0.07);
+      --text:     #dde1ee;
+      --muted:    #5c6280;
+      --green:    #34d399;
+      --red:      #f87171;
+      --blue:     #60a5fa;
+      --amber:    #fbbf24;
+      --purple:   #a78bfa;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      gap: 16px;
+    }
+
+    header h1 { font-size: 15px; font-weight: 600; letter-spacing: 0.02em; }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 13px;
+      padding: 7px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      outline: none;
+      font-family: inherit;
+    }
+    select:focus { border-color: var(--blue); }
+
+    .btn {
+      padding: 7px 14px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      transition: opacity 0.15s;
+      border: none;
+    }
+    .btn-primary { background: var(--blue); color: #fff; }
+    .btn-primary:hover { opacity: 0.85; }
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+    .btn-ghost:hover { border-color: var(--text); color: var(--text); }
+
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); display: inline-block; margin-right: 6px; }
+    .dot.ok  { background: var(--green); box-shadow: 0 0 5px var(--green); }
+    .dot.err { background: var(--red); }
+
+    /* ── Report Page ── */
+    #report-container { max-width: 860px; margin: 0 auto; padding: 32px 24px; }
+
+    .loading-state, .error-state {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 380px; gap: 12px;
+      color: var(--muted); font-size: 13px;
+    }
+    .error-state { color: var(--red); }
+    .spinner {
+      width: 28px; height: 28px;
+      border: 2px solid var(--border);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Report Sections ── */
+    .report-header {
+      margin-bottom: 28px;
+    }
+
+    .report-period {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .report-title {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin-bottom: 4px;
+    }
+
+    .report-subtitle { font-size: 13px; color: var(--muted); }
+
+    /* Stats hero row */
+    .hero-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 700px) { .hero-row { grid-template-columns: repeat(2, 1fr); } }
+
+    .hero-item {
+      background: var(--surface);
+      padding: 18px 20px;
+    }
+
+    .hero-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 6px; }
+    .hero-value { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; }
+    .hero-sub   { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+    .green  { color: var(--green); }
+    .red    { color: var(--red); }
+    .blue   { color: var(--blue); }
+    .amber  { color: var(--amber); }
+
+    /* Two-column layout */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+    .panel:last-child { margin-bottom: 0; }
+
+    .panel-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    canvas { display: block; width: 100% !important; }
+
+    /* Bet list */
+    .bet-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      gap: 12px;
+    }
+    .bet-row:last-child { border-bottom: none; }
+    .bet-pick { flex: 1; font-size: 13px; min-width: 0; }
+    .bet-pick-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bet-pick-meta  { font-size: 11px; color: var(--muted); margin-top: 1px; }
+    .bet-result { font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; flex-shrink: 0; }
+    .bet-result-label { font-weight: 600; }
+    .bet-result-meta  { font-size: 11px; color: var(--muted); }
+
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 1px 7px; border-radius: 3px; font-size: 11px; font-weight: 600; margin-right: 6px;
+    }
+    .badge-W { background: rgba(52,211,153,0.15); color: var(--green); }
+    .badge-L { background: rgba(248,113,113,0.15); color: var(--red); }
+    .badge-P { background: rgba(251,191,36,0.15); color: var(--amber); }
+    .badge-open { background: var(--surface2); color: var(--muted); }
+
+    /* Sport table */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th {
+      text-align: left; padding: 7px 8px;
+      font-size: 11px; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--muted);
+      border-bottom: 1px solid var(--border); font-weight: 500;
+    }
+    tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody td { padding: 8px 8px; color: var(--text); }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+    /* Print styles */
+    @media print {
+      body { background: white; color: #111; }
+      :root {
+        --bg: white; --surface: white; --surface2: #f5f5f5;
+        --border: rgba(0,0,0,0.1); --text: #111; --muted: #666;
+      }
+      header { display: none; }
+      #report-container { max-width: 100%; padding: 0; }
+      .panel { break-inside: avoid; }
+    }
+
+    /* Separator line */
+    .section-sep {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 8px 0 18px;
+    }
+
+    .no-bets { font-size: 13px; color: var(--muted); padding: 8px 0; }
+
+    .pending-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--amber);
+      background: rgba(251,191,36,0.1);
+      padding: 4px 10px;
+      border-radius: 3px;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Recap Report</h1>
+  <div class="header-controls">
+    <span style="font-size:12px;color:var(--muted)"><span class="dot" id="status-dot"></span><span id="status-text">Connecting…</span></span>
+    <select id="period-select" onchange="generateReport()">
+      <option value="7">This week (7 days)</option>
+      <option value="14">Last 14 days</option>
+      <option value="30" selected>This month (30 days)</option>
+      <option value="90">Last 90 days</option>
+      <option value="0">All time</option>
+    </select>
+    <button class="btn btn-ghost" onclick="window.print()">Print / Save PDF</button>
+  </div>
+</header>
+
+<div id="report-container">
+  <div class="loading-state"><div class="spinner"></div><span>Loading…</span></div>
+</div>
+
+<script>
+const API = 'http://localhost:5001';
+
+// ── Utilities ──────────────────────────────────────────────────────────────
+
+function americanToImplied(odds) {
+  const o = Number(odds);
+  if (isNaN(o) || o === 0) return 0;
+  return o < 0 ? (-o) / (-o + 100) * 100 : 100 / (o + 100) * 100;
+}
+
+function totalPnl(bets) {
+  return bets.reduce((s, b) => s + (b.winLoss || 0), 0);
+}
+
+function roiPct(bets) {
+  const stake = bets.reduce((s, b) => s + (b.stake || 0), 0);
+  const pnl   = totalPnl(bets);
+  return stake === 0 ? 0 : (pnl / stake) * 100;
+}
+
+function winRate(bets) {
+  const decided = bets.filter(b => b.result === 'W' || b.result === 'L');
+  return decided.length ? decided.filter(b => b.result === 'W').length / decided.length * 100 : 0;
+}
+
+function fmtMoney(n) {
+  return (n >= 0 ? '+$' : '-$') + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function fmtPct(n) {
+  return (n >= 0 ? '+' : '') + n.toFixed(1) + '%';
+}
+
+function groupBy(arr, fn) {
+  return arr.reduce((acc, item) => {
+    const k = fn(item);
+    (acc[k] = acc[k] || []).push(item);
+    return acc;
+  }, {});
+}
+
+function parseDate(str) {
+  if (!str) return null;
+  const d = new Date(str);
+  return isNaN(d) ? null : d;
+}
+
+function fmtDate(str) {
+  if (!str) return '—';
+  const d = parseDate(str);
+  return d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
+}
+
+Chart.defaults.color = '#5c6280';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
+Chart.defaults.font.size = 12;
+
+const charts = {};
+function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+// ── Report Generation ──────────────────────────────────────────────────────
+
+let allSettled = [];
+let allOpen    = [];
+
+function generateReport() {
+  const days = parseInt(document.getElementById('period-select').value);
+  const container = document.getElementById('report-container');
+
+  let bets = [...allSettled];
+  let cutoff = null;
+
+  if (days > 0) {
+    cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    bets = bets.filter(b => {
+      const d = parseDate(b.settledDate || b.addedDate);
+      return d && d >= cutoff;
+    });
+  }
+
+  const openInPeriod = days > 0
+    ? allOpen.filter(b => {
+        const d = parseDate(b.addedDate);
+        return d && d >= cutoff;
+      })
+    : allOpen;
+
+  if (bets.length === 0 && openInPeriod.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center;padding:60px 0;color:var(--muted)">
+        No bets found for this period.
+      </div>`;
+    return;
+  }
+
+  // ── Compute metrics ──────────────────────────────────────────────────────
+
+  const decided  = bets.filter(b => b.result === 'W' || b.result === 'L');
+  const wins     = decided.filter(b => b.result === 'W');
+  const losses   = decided.filter(b => b.result === 'L');
+  const pushes   = bets.filter(b => b.result === 'P');
+  const pnl      = totalPnl(bets);
+  const roi      = roiPct(bets);
+  const wr       = winRate(bets);
+  const totalStake = bets.reduce((s, b) => s + (b.stake || 0), 0);
+
+  // Streak — most recent bets
+  const sorted = [...bets].sort((a, b) => new Date(b.settledDate) - new Date(a.settledDate));
+  let streak = 0, streakType = '';
+  for (const b of sorted) {
+    if (!streakType && (b.result === 'W' || b.result === 'L')) {
+      streakType = b.result; streak = 1;
+    } else if (b.result === streakType) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+
+  // Best / worst bets
+  const decidedSorted = [...decided].sort((a, b) => (b.winLoss || 0) - (a.winLoss || 0));
+  const best3  = decidedSorted.slice(0, 3);
+  const worst3 = decidedSorted.slice(-3).reverse();
+
+  // By sport breakdown
+  const bySport = groupBy(bets.filter(b => b.sport), b => b.sport);
+  const sports  = Object.keys(bySport).sort((a, b) => totalPnl(bySport[b]) - totalPnl(bySport[a]));
+
+  // By type
+  const byType  = groupBy(bets.filter(b => b.type), b => b.type);
+  const types   = Object.keys(byType).sort((a, b) => byType[b].length - byType[a].length);
+
+  // P&L by day in period
+  const byDay = groupBy(bets.filter(b => b.settledDate), b => {
+    const d = parseDate(b.settledDate);
+    return d ? d.toISOString().slice(0, 10) : null;
+  });
+  delete byDay[null];
+  const days2 = Object.keys(byDay).sort();
+
+  // Period label
+  const periodLabel = days === 0 ? 'All Time'
+    : days === 7  ? 'Last 7 Days'
+    : days === 14 ? 'Last 14 Days'
+    : days === 30 ? 'Last 30 Days'
+    : 'Last 90 Days';
+
+  const dateRange = cutoff
+    ? cutoff.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' – ' +
+      new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : 'All Time';
+
+  // ── Render ───────────────────────────────────────────────────────────────
+
+  container.innerHTML = `
+    <div class="report-header">
+      <div class="report-period">${periodLabel}</div>
+      <div class="report-title">${pnl >= 0 ? '+' : ''}$${Math.abs(pnl).toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2})} P&L</div>
+      <div class="report-subtitle">${dateRange} &nbsp;·&nbsp; ${bets.length} settled bets</div>
+    </div>
+
+    <div class="hero-row">
+      <div class="hero-item">
+        <div class="hero-label">P&L</div>
+        <div class="hero-value ${pnl >= 0 ? 'green' : 'red'}">${fmtMoney(pnl)}</div>
+        <div class="hero-sub">On $${totalStake.toFixed(0)} staked</div>
+      </div>
+      <div class="hero-item">
+        <div class="hero-label">ROI</div>
+        <div class="hero-value ${roi >= 0 ? 'green' : 'red'}">${fmtPct(roi)}</div>
+        <div class="hero-sub">${decided.length} settled</div>
+      </div>
+      <div class="hero-item">
+        <div class="hero-label">Win Rate</div>
+        <div class="hero-value ${wr >= 52 ? 'green' : 'amber'}">${wr.toFixed(1)}%</div>
+        <div class="hero-sub">${wins.length}W  ${losses.length}L  ${pushes.length}P</div>
+      </div>
+      <div class="hero-item">
+        <div class="hero-label">Current Streak</div>
+        <div class="hero-value ${streakType === 'W' ? 'green' : streakType === 'L' ? 'red' : 'blue'}">
+          ${streak > 0 ? streak + streakType : '—'}
+        </div>
+        <div class="hero-sub">${openInPeriod.length} pending</div>
+      </div>
+    </div>
+
+    ${bets.length >= 3 ? `
+    <div class="two-col">
+      <div class="panel">
+        <div class="panel-title">Daily P&L</div>
+        <div style="height:160px"><canvas id="chart-daily"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">By Sport</div>
+        <div style="height:160px"><canvas id="chart-sport"></canvas></div>
+      </div>
+    </div>` : ''}
+
+    <div class="two-col">
+      <div class="panel">
+        <div class="panel-title">Best Bets</div>
+        ${best3.length ? best3.map(b => betRow(b)).join('') : '<div class="no-bets">No settled wins yet.</div>'}
+      </div>
+      <div class="panel">
+        <div class="panel-title">Worst Bets</div>
+        ${worst3.length ? worst3.map(b => betRow(b)).join('') : '<div class="no-bets">No settled losses yet.</div>'}
+      </div>
+    </div>
+
+    ${openInPeriod.length > 0 ? `
+    <div class="panel">
+      <div class="panel-title">Pending Bets — ${openInPeriod.length} open</div>
+      <div class="pending-badge">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        ${openInPeriod.reduce((s, b) => s + (b.stake || 0), 0).toFixed(2)} at risk
+        &nbsp;·&nbsp; potential +$${openInPeriod.reduce((s, b) => s + (b.toWin || 0), 0).toFixed(2)} if all hit
+      </div>
+      ${openInPeriod.slice(0, 8).map(b => openBetRow(b)).join('')}
+      ${openInPeriod.length > 8 ? `<div style="font-size:12px;color:var(--muted);padding-top:8px">…and ${openInPeriod.length - 8} more pending</div>` : ''}
+    </div>` : ''}
+
+    <div class="panel">
+      <div class="panel-title">Sport Breakdown</div>
+      ${sports.length ? buildSportTable(sports, bySport) : '<div class="no-bets">No sport data.</div>'}
+    </div>
+
+    ${bets.length > 0 ? `
+    <div class="panel">
+      <div class="panel-title">Bet Type Breakdown</div>
+      ${types.length ? buildTypeTable(types, byType) : '<div class="no-bets">No type data.</div>'}
+    </div>` : ''}
+
+    <div class="panel">
+      <div class="panel-title">Full Bet Log</div>
+      ${bets.length ? bets.sort((a, b) => new Date(b.settledDate || 0) - new Date(a.settledDate || 0))
+        .map(b => betRowFull(b)).join('') : '<div class="no-bets">No bets in this period.</div>'}
+    </div>`;
+
+  // Charts
+  if (bets.length >= 3) {
+    buildDailyChart(days2, byDay);
+    buildSportChart(sports, bySport);
+  }
+}
+
+// ── Row builders ───────────────────────────────────────────────────────────
+
+function betRow(b) {
+  const pick = b.pick || b.matchup || '—';
+  const displayPick = pick.length > 36 ? pick.slice(0, 36) + '…' : pick;
+  const pnl = b.winLoss || 0;
+  return `<div class="bet-row">
+    <div class="bet-pick">
+      <div class="bet-pick-label">${displayPick}</div>
+      <div class="bet-pick-meta">${b.sport || ''} · ${fmtDate(b.settledDate)}</div>
+    </div>
+    <div class="bet-result">
+      <div class="bet-result-label" style="color:${pnl >= 0 ? 'var(--green)' : 'var(--red)'}">${fmtMoney(pnl)}</div>
+      <div class="bet-result-meta">$${b.stake || 0} @ ${b.odds > 0 ? '+' : ''}${b.odds}</div>
+    </div>
+  </div>`;
+}
+
+function openBetRow(b) {
+  const pick = b.pick || b.matchup || '—';
+  const displayPick = pick.length > 40 ? pick.slice(0, 40) + '…' : pick;
+  return `<div class="bet-row">
+    <div class="bet-pick">
+      <div class="bet-pick-label">${displayPick}</div>
+      <div class="bet-pick-meta">${b.sport || ''} · ${b.gameTime || 'Game time TBD'}</div>
+    </div>
+    <div class="bet-result">
+      <div class="bet-result-label amber">$${(b.stake || 0).toFixed(2)}</div>
+      <div class="bet-result-meta">to win $${(b.toWin || 0).toFixed(2)}</div>
+    </div>
+  </div>`;
+}
+
+function betRowFull(b) {
+  const pick = b.pick || b.matchup || '—';
+  const displayPick = pick.length > 44 ? pick.slice(0, 44) + '…' : pick;
+  const pnl = b.winLoss || 0;
+  const resultBadge = b.result ? `<span class="badge badge-${b.result}">${b.result}</span>` : '';
+  return `<div class="bet-row">
+    <div class="bet-pick">
+      <div class="bet-pick-label">${resultBadge}${displayPick}</div>
+      <div class="bet-pick-meta">${b.sport || ''} · ${b.type || ''} · ${fmtDate(b.settledDate)}</div>
+    </div>
+    <div class="bet-result">
+      <div class="bet-result-label" style="color:${pnl > 0 ? 'var(--green)' : pnl < 0 ? 'var(--red)' : 'var(--muted)'}">${fmtMoney(pnl)}</div>
+      <div class="bet-result-meta">$${b.stake || 0} @ ${b.odds > 0 ? '+' : ''}${b.odds}</div>
+    </div>
+  </div>`;
+}
+
+function buildSportTable(sports, bySport) {
+  const rows = sports.map(s => {
+    const sb = bySport[s];
+    const decided = sb.filter(b => b.result === 'W' || b.result === 'L');
+    const wins = decided.filter(b => b.result === 'W').length;
+    const pnl  = totalPnl(sb);
+    const roi  = roiPct(sb);
+    return `<tr>
+      <td>${s}</td>
+      <td class="num">${sb.length}</td>
+      <td class="num">${wins}/${decided.length}</td>
+      <td class="num">${decided.length ? (wins/decided.length*100).toFixed(0)+'%' : '—'}</td>
+      <td class="num" style="color:${pnl >= 0 ? 'var(--green)' : 'var(--red)'}">${fmtMoney(pnl)}</td>
+      <td class="num" style="color:${roi >= 0 ? 'var(--green)' : 'var(--red)'}">${fmtPct(roi)}</td>
+    </tr>`;
+  }).join('');
+  return `<table>
+    <thead><tr>
+      <th>Sport</th><th class="num">Bets</th><th class="num">W/L</th>
+      <th class="num">Win%</th><th class="num">P&L</th><th class="num">ROI</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function buildTypeTable(types, byType) {
+  const rows = types.map(t => {
+    const tb = byType[t];
+    const decided = tb.filter(b => b.result === 'W' || b.result === 'L');
+    const wins = decided.filter(b => b.result === 'W').length;
+    const pnl  = totalPnl(tb);
+    const roi  = roiPct(tb);
+    return `<tr>
+      <td>${t}</td>
+      <td class="num">${tb.length}</td>
+      <td class="num">${wins}/${decided.length}</td>
+      <td class="num" style="color:${pnl >= 0 ? 'var(--green)' : 'var(--red)'}">${fmtMoney(pnl)}</td>
+      <td class="num" style="color:${roi >= 0 ? 'var(--green)' : 'var(--red)'}">${fmtPct(roi)}</td>
+    </tr>`;
+  }).join('');
+  return `<table>
+    <thead><tr>
+      <th>Type</th><th class="num">Bets</th><th class="num">W/L</th>
+      <th class="num">P&L</th><th class="num">ROI</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+// ── Charts ─────────────────────────────────────────────────────────────────
+
+const baseTooltip = {
+  backgroundColor: '#1a1e2b',
+  borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+  titleColor: '#dde1ee', bodyColor: '#8b90a8', padding: 8, cornerRadius: 4,
+};
+
+function buildDailyChart(days, byDay) {
+  destroyChart('daily');
+  const pnls   = days.map(d => parseFloat(totalPnl(byDay[d]).toFixed(2)));
+  const colors = pnls.map(v => v >= 0 ? 'rgba(52,211,153,0.65)' : 'rgba(248,113,113,0.65)');
+  const labels = days.map(d => {
+    const date = new Date(d + 'T12:00:00');
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  });
+
+  const ctx = document.getElementById('chart-daily').getContext('2d');
+  charts['daily'] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'P&L', data: pnls, backgroundColor: colors, borderRadius: 3 }] },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { ...baseTooltip, callbacks: { label: c => ' P&L: ' + (c.parsed.y >= 0 ? '+$' : '-$') + Math.abs(c.parsed.y).toFixed(2) } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 30 } },
+        y: { ticks: { callback: v => '$' + v }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+function buildSportChart(sports, bySport) {
+  destroyChart('sport');
+  if (!sports.length) return;
+
+  const rois   = sports.map(s => parseFloat(roiPct(bySport[s]).toFixed(1)));
+  const colors = rois.map(v => v >= 0 ? 'rgba(96,165,250,0.65)' : 'rgba(248,113,113,0.65)');
+
+  const ctx = document.getElementById('chart-sport').getContext('2d');
+  charts['sport'] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: sports, datasets: [{ label: 'ROI %', data: rois, backgroundColor: colors, borderRadius: 3 }] },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { ...baseTooltip, callbacks: { label: c => ' ROI: ' + c.parsed.x + '%' } }
+      },
+      scales: {
+        x: { ticks: { callback: v => v + '%' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { grid: { display: false } }
+      }
+    }
+  });
+}
+
+// ── Bootstrap ──────────────────────────────────────────────────────────────
+
+async function init() {
+  const dot  = document.getElementById('status-dot');
+  const text = document.getElementById('status-text');
+
+  try {
+    await fetch(API + '/api/status');
+    dot.className = 'dot ok';
+    text.textContent = 'Server online';
+
+    const [betsRes, openRes] = await Promise.all([
+      fetch(API + '/api/bets').then(r => r.json()),
+      fetch(API + '/api/open-bets').then(r => r.json()),
+    ]);
+
+    allSettled = betsRes.bets || [];
+    allOpen    = openRes.bets  || [];
+
+    generateReport();
+
+  } catch (err) {
+    dot.className = 'dot err';
+    text.textContent = 'Server offline';
+    document.getElementById('report-container').innerHTML = `
+      <div class="error-state">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span>Cannot reach the Flask server at ${API}</span>
+        <span style="font-size:12px;color:#5c6280">Start <code>python server.py</code>, then refresh.</span>
+      </div>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CLV Tracker</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <!-- Multi-user shim — routes /api/* fetches to the active user's data -->
+  <script src="js/user-context.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0c0e14;
+      --surface:  #13161f;
+      --surface2: #1a1e2b;
+      --border:   rgba(255,255,255,0.07);
+      --text:     #dde1ee;
+      --muted:    #5c6280;
+      --green:    #34d399;
+      --red:      #f87171;
+      --blue:     #60a5fa;
+      --amber:    #fbbf24;
+      --teal:     #2dd4bf;
+      --purple:   #a78bfa;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    header h1 { font-size: 15px; font-weight: 600; letter-spacing: 0.02em; }
+
+    .header-meta {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; display: inline-block; margin-right: 6px; }
+    .dot.ok  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .dot.err { background: var(--red); }
+
+    .explainer {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 24px;
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .explainer strong { color: var(--text); }
+
+    main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+
+    /* Stats Row */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 1000px) { .stats-row { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 600px)  { .stats-row { grid-template-columns: repeat(2, 1fr); } }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px;
+    }
+    .stat-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .stat-value { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+    .stat-sub   { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    .green  { color: var(--green); }
+    .red    { color: var(--red); }
+    .blue   { color: var(--blue); }
+    .amber  { color: var(--amber); }
+    .purple { color: var(--purple); }
+
+    /* Layout */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .chart-full  { grid-column: 1 / -1; }
+    @media (max-width: 900px) {
+      .charts-grid { grid-template-columns: 1fr; }
+      .chart-full  { grid-column: 1; }
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 18px;
+    }
+
+    .panel-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .panel-title span { color: var(--text); font-size: 13px; text-transform: none; letter-spacing: 0; font-weight: 400; }
+
+    canvas { display: block; width: 100% !important; }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+    thead th {
+      text-align: left; padding: 8px 12px;
+      font-size: 11px; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--muted);
+      border-bottom: 1px solid var(--border); font-weight: 500;
+      cursor: pointer; user-select: none;
+      white-space: nowrap;
+    }
+    thead th:hover { color: var(--text); }
+
+    tbody tr { border-bottom: 1px solid var(--border); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody td { padding: 8px 12px; color: var(--text); }
+    tbody tr:hover td { background: var(--surface2); }
+
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    td.clv-pos { color: var(--green); }
+    td.clv-neg { color: var(--red); }
+
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 1px 7px; border-radius: 3px;
+      font-size: 11px; font-weight: 600;
+    }
+    .badge-green { background: rgba(52,211,153,0.15); color: var(--green); }
+    .badge-red   { background: rgba(248,113,113,0.15); color: var(--red); }
+    .badge-muted { background: var(--surface2); color: var(--muted); }
+
+    /* Legend item */
+    .legend-row {
+      display: flex; gap: 20px; margin-bottom: 12px;
+      font-size: 12px; color: var(--muted); flex-wrap: wrap;
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    /* States */
+    .loading-state, .error-state, .empty-state {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 320px; gap: 12px;
+      color: var(--muted); font-size: 13px;
+    }
+    .error-state { color: var(--red); }
+
+    .spinner {
+      width: 28px; height: 28px;
+      border: 2px solid var(--border);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .no-clv-banner {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .no-clv-banner strong { color: var(--text); }
+    .no-clv-banner code {
+      background: rgba(255,255,255,0.06);
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 12px;
+      color: var(--amber);
+    }
+
+    .sort-arrow { margin-left: 4px; opacity: 0.5; }
+    .sort-active .sort-arrow { opacity: 1; color: var(--blue); }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>CLV Tracker — Closing Line Value</h1>
+  <div class="header-meta">
+    <span><span class="dot" id="status-dot"></span><span id="status-text">Connecting…</span></span>
+    <span id="last-updated"></span>
+  </div>
+</header>
+
+<div class="explainer">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="9"/>
+    <line x1="12" y1="12" x2="12" y2="16"/>
+  </svg>
+  <strong>CLV</strong> = closing implied probability − your entry implied probability.
+  <strong>Positive CLV means you got better odds than where the market closed</strong> — a signal of genuine edge.
+</div>
+
+<main>
+  <div id="app-content">
+    <div class="loading-state"><div class="spinner"></div><span>Loading…</span></div>
+  </div>
+</main>
+
+<script>
+const API = 'http://localhost:5001';
+
+// ── Utilities ──────────────────────────────────────────────────────────────
+
+function americanToImplied(odds) {
+  const o = Number(odds);
+  if (isNaN(o) || o === 0) return 0;
+  return o < 0 ? (-o) / (-o + 100) * 100 : 100 / (o + 100) * 100;
+}
+
+// CLV = closing_implied - entry_implied (positive = you beat the close, good)
+function calcCLV(entryOdds, closingOdds) {
+  return americanToImplied(closingOdds) - americanToImplied(entryOdds);
+}
+
+function fmtPct(n, sign = true) {
+  return (sign && n > 0 ? '+' : '') + n.toFixed(2) + '%';
+}
+
+function fmtMoney(n) {
+  return (n >= 0 ? '+$' : '-$') + Math.abs(n).toFixed(2);
+}
+
+function groupBy(arr, fn) {
+  return arr.reduce((acc, item) => {
+    const k = fn(item);
+    (acc[k] = acc[k] || []).push(item);
+    return acc;
+  }, {});
+}
+
+function avg(arr) {
+  return arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : 0;
+}
+
+function parseDate(str) {
+  if (!str) return null;
+  const d = new Date(str);
+  return isNaN(d) ? null : d;
+}
+
+function monthKey(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+// ── Chart defaults ─────────────────────────────────────────────────────────
+
+Chart.defaults.color = '#5c6280';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
+Chart.defaults.font.size = 12;
+
+const charts = {};
+
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+function baseTooltip() {
+  return {
+    backgroundColor: '#1a1e2b',
+    borderColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    titleColor: '#dde1ee',
+    bodyColor: '#8b90a8',
+    padding: 10,
+    cornerRadius: 4,
+  };
+}
+
+// ── Charts ─────────────────────────────────────────────────────────────────
+
+function buildCLVBarChart(betsWithCLV) {
+  destroyChart('clv-bar');
+  const sorted = [...betsWithCLV].sort((a, b) => b.clv - a.clv);
+  const top30  = sorted.slice(0, Math.min(sorted.length, 40));
+
+  const labels = top30.map(b => {
+    const pick = b.pick || b.matchup || b.txId || '?';
+    return pick.length > 22 ? pick.slice(0, 22) + '…' : pick;
+  });
+  const clvs   = top30.map(b => parseFloat(b.clv.toFixed(2)));
+  const colors = clvs.map(v => v >= 0 ? 'rgba(52,211,153,0.7)' : 'rgba(248,113,113,0.7)');
+
+  const ctx = document.getElementById('chart-clv-bar').getContext('2d');
+  charts['clv-bar'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'CLV %',
+        data: clvs,
+        backgroundColor: colors,
+        borderRadius: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          ...baseTooltip(),
+          callbacks: {
+            title: items => top30[items[0].dataIndex].pick || top30[items[0].dataIndex].matchup || '',
+            label: ctx => [
+              ` CLV: ${fmtPct(ctx.parsed.y)}`,
+              ` Entry: ${top30[ctx.dataIndex].odds > 0 ? '+' : ''}${top30[ctx.dataIndex].odds}`,
+              ` Closing: ${top30[ctx.dataIndex].closingOdds > 0 ? '+' : ''}${top30[ctx.dataIndex].closingOdds}`,
+              ` Result: ${top30[ctx.dataIndex].result || '—'}`,
+            ]
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { maxRotation: 45, font: { size: 10 } }
+        },
+        y: {
+          ticks: { callback: v => v + '%' },
+          grid: { color: 'rgba(255,255,255,0.04)' }
+        }
+      }
+    }
+  });
+}
+
+function buildCLVBySportChart(betsWithCLV) {
+  destroyChart('clv-sport');
+  const bySport = groupBy(betsWithCLV, b => b.sport || 'Other');
+  const sports  = Object.keys(bySport);
+  sports.sort((a, b) => avg(bySport[b].map(x => x.clv)) - avg(bySport[a].map(x => x.clv)));
+
+  const avgCLVs = sports.map(s => parseFloat(avg(bySport[s].map(x => x.clv)).toFixed(2)));
+  const counts  = sports.map(s => bySport[s].length);
+  const colors  = avgCLVs.map(v => v >= 0 ? 'rgba(52,211,153,0.7)' : 'rgba(248,113,113,0.7)');
+
+  const ctx = document.getElementById('chart-clv-sport').getContext('2d');
+  charts['clv-sport'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sports,
+      datasets: [{
+        label: 'Avg CLV %',
+        data: avgCLVs,
+        backgroundColor: colors,
+        borderRadius: 3,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          ...baseTooltip(),
+          callbacks: {
+            label: ctx => ` Avg CLV: ${fmtPct(ctx.parsed.x)}`,
+            afterLabel: ctx => ` Bets: ${counts[ctx.dataIndex]}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { callback: v => v + '%' },
+          grid: { color: 'rgba(255,255,255,0.04)' }
+        },
+        y: { grid: { display: false } }
+      }
+    }
+  });
+}
+
+function buildCLVTrendChart(betsWithCLV) {
+  destroyChart('clv-trend');
+  const settled = betsWithCLV.filter(b => b.settledDate);
+  if (settled.length < 2) return;
+
+  settled.sort((a, b) => new Date(a.settledDate) - new Date(b.settledDate));
+
+  const byMonth = groupBy(settled, b => {
+    const d = parseDate(b.settledDate);
+    return d ? monthKey(d) : null;
+  });
+  delete byMonth[null];
+
+  const months   = Object.keys(byMonth).sort();
+  const avgClvs  = months.map(m => parseFloat(avg(byMonth[m].map(x => x.clv)).toFixed(2)));
+  const beatPcts = months.map(m => {
+    const pos = byMonth[m].filter(x => x.clv > 0).length;
+    return parseFloat((pos / byMonth[m].length * 100).toFixed(1));
+  });
+
+  const ctx = document.getElementById('chart-clv-trend').getContext('2d');
+  charts['clv-trend'] = new Chart(ctx, {
+    data: {
+      labels: months,
+      datasets: [
+        {
+          type: 'line',
+          label: 'Avg CLV %',
+          data: avgClvs,
+          borderColor: '#60a5fa',
+          backgroundColor: 'rgba(96,165,250,0.1)',
+          pointRadius: 4,
+          pointBackgroundColor: '#60a5fa',
+          tension: 0.3,
+          fill: true,
+          yAxisID: 'y',
+        },
+        {
+          type: 'bar',
+          label: '% Beating Close',
+          data: beatPcts,
+          backgroundColor: beatPcts.map(v => v >= 50 ? 'rgba(52,211,153,0.35)' : 'rgba(248,113,113,0.35)'),
+          yAxisID: 'y2',
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'top', align: 'end',
+          labels: { boxWidth: 10, padding: 14, color: '#8b90a8', font: { size: 11 } } },
+        tooltip: { ...baseTooltip() }
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: {
+          position: 'left',
+          ticks: { callback: v => v + '%' },
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          title: { display: true, text: 'Avg CLV %', color: '#5c6280', font: { size: 11 } }
+        },
+        y2: {
+          position: 'right',
+          min: 0, max: 100,
+          ticks: { callback: v => v + '%', color: '#5c6280' },
+          grid: { display: false },
+          title: { display: true, text: '% Beating Close', color: '#5c6280', font: { size: 11 } }
+        }
+      }
+    }
+  });
+}
+
+function buildCLVvResultChart(betsWithCLV) {
+  destroyChart('clv-result');
+
+  const won  = betsWithCLV.filter(b => b.result === 'W');
+  const lost = betsWithCLV.filter(b => b.result === 'L');
+  const pend = betsWithCLV.filter(b => !b.result || b.result === '' || b.result === 'P');
+
+  function scatter(group) {
+    return group.map(b => ({
+      x: Number(b.odds),
+      y: parseFloat(b.clv.toFixed(2)),
+      bet: b
+    }));
+  }
+
+  const ctx = document.getElementById('chart-clv-result').getContext('2d');
+  charts['clv-result'] = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [
+        {
+          label: 'Won',
+          data: scatter(won),
+          backgroundColor: 'rgba(52,211,153,0.55)',
+          pointRadius: 5,
+          pointHoverRadius: 7,
+        },
+        {
+          label: 'Lost',
+          data: scatter(lost),
+          backgroundColor: 'rgba(248,113,113,0.55)',
+          pointRadius: 5,
+          pointHoverRadius: 7,
+        },
+        {
+          label: 'Pending / Push',
+          data: scatter(pend),
+          backgroundColor: 'rgba(96,165,250,0.4)',
+          pointRadius: 4,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: true, position: 'top', align: 'end',
+          labels: { boxWidth: 8, padding: 12, color: '#8b90a8', font: { size: 11 }, usePointStyle: true } },
+        tooltip: {
+          ...baseTooltip(),
+          callbacks: {
+            label: ctx => {
+              const b = ctx.raw.bet;
+              return [
+                ` ${b.pick || b.matchup || ''}`,
+                ` CLV: ${fmtPct(ctx.raw.y)}   Odds: ${ctx.raw.x > 0 ? '+' : ''}${ctx.raw.x}`,
+              ];
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: 'Entry Odds (American)', color: '#5c6280', font: { size: 11 } },
+          ticks: { callback: v => v > 0 ? '+' + v : v },
+          grid: { color: 'rgba(255,255,255,0.04)' }
+        },
+        y: {
+          title: { display: true, text: 'CLV %', color: '#5c6280', font: { size: 11 } },
+          ticks: { callback: v => v + '%' },
+          grid: { color: 'rgba(255,255,255,0.04)' }
+        }
+      }
+    }
+  });
+}
+
+// ── Stats Cards ────────────────────────────────────────────────────────────
+
+function renderStats(betsWithCLV, total, matched) {
+  const pos     = betsWithCLV.filter(b => b.clv > 0);
+  const neg     = betsWithCLV.filter(b => b.clv < 0);
+  const avgCLV  = avg(betsWithCLV.map(b => b.clv));
+  const beatPct = betsWithCLV.length ? pos.length / betsWithCLV.length * 100 : 0;
+
+  const avgCLVWon  = avg(betsWithCLV.filter(b => b.result === 'W').map(b => b.clv));
+  const avgCLVLost = avg(betsWithCLV.filter(b => b.result === 'L').map(b => b.clv));
+
+  document.getElementById('stat-avg').innerHTML =
+    `<div class="stat-label">Avg CLV</div>
+     <div class="stat-value ${avgCLV >= 0 ? 'green' : 'red'}">${fmtPct(avgCLV)}</div>
+     <div class="stat-sub">${matched} bets with closing lines</div>`;
+
+  document.getElementById('stat-beat').innerHTML =
+    `<div class="stat-label">Beat The Close</div>
+     <div class="stat-value ${beatPct >= 50 ? 'green' : 'red'}">${beatPct.toFixed(1)}%</div>
+     <div class="stat-sub">${pos.length} of ${betsWithCLV.length} bets</div>`;
+
+  document.getElementById('stat-pos').innerHTML =
+    `<div class="stat-label">Avg Positive CLV</div>
+     <div class="stat-value green">${pos.length ? fmtPct(avg(pos.map(b => b.clv))) : '—'}</div>
+     <div class="stat-sub">${pos.length} bets</div>`;
+
+  document.getElementById('stat-neg').innerHTML =
+    `<div class="stat-label">Avg Negative CLV</div>
+     <div class="stat-value red">${neg.length ? fmtPct(avg(neg.map(b => b.clv))) : '—'}</div>
+     <div class="stat-sub">${neg.length} bets</div>`;
+
+  document.getElementById('stat-won').innerHTML =
+    `<div class="stat-label">Avg CLV — Winners</div>
+     <div class="stat-value ${avgCLVWon >= 0 ? 'green' : 'red'}">${betsWithCLV.filter(b => b.result === 'W').length ? fmtPct(avgCLVWon) : '—'}</div>
+     <div class="stat-sub">vs ${betsWithCLV.filter(b => b.result === 'L').length ? fmtPct(avgCLVLost) : '—'} for losses</div>`;
+}
+
+// ── Detail Table ───────────────────────────────────────────────────────────
+
+let tableData = [];
+let sortCol   = 'clv';
+let sortAsc   = false;
+
+function renderTable(betsWithCLV) {
+  tableData = betsWithCLV;
+  sortAndRender();
+}
+
+function sortAndRender() {
+  const sorted = [...tableData].sort((a, b) => {
+    let av = a[sortCol], bv = b[sortCol];
+    if (typeof av === 'string') av = av.toLowerCase();
+    if (typeof bv === 'string') bv = bv.toLowerCase();
+    return sortAsc ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+  });
+
+  const cols = ['pick', 'sport', 'odds', 'closingOdds', 'clv', 'result', 'settledDate'];
+
+  const headerLabels = {
+    pick: 'Pick', sport: 'Sport', odds: 'Entry Odds',
+    closingOdds: 'Closing Odds', clv: 'CLV %',
+    result: 'Result', settledDate: 'Date'
+  };
+
+  const thead = `<tr>${cols.map(c => `
+    <th class="${sortCol === c ? 'sort-active' : ''}" data-col="${c}">
+      ${headerLabels[c]}<span class="sort-arrow">${sortCol === c ? (sortAsc ? '↑' : '↓') : '↕'}</span>
+    </th>`).join('')}</tr>`;
+
+  const tbody = sorted.map(b => {
+    const clv = b.clv;
+    const clvClass = clv >= 0 ? 'clv-pos' : 'clv-neg';
+    const resultBadge = b.result === 'W'
+      ? '<span class="badge badge-green">W</span>'
+      : b.result === 'L'
+        ? '<span class="badge badge-red">L</span>'
+        : '<span class="badge badge-muted">' + (b.result || '—') + '</span>';
+
+    const settledFmt = b.settledDate
+      ? new Date(b.settledDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : '—';
+
+    const pick = b.pick || b.matchup || b.txId || '—';
+    const displayPick = pick.length > 36 ? pick.slice(0, 36) + '…' : pick;
+
+    return `<tr>
+      <td title="${pick}">${displayPick}</td>
+      <td>${b.sport || '—'}</td>
+      <td class="num">${b.odds > 0 ? '+' : ''}${b.odds}</td>
+      <td class="num">${b.closingOdds > 0 ? '+' : ''}${b.closingOdds}</td>
+      <td class="num ${clvClass}">${fmtPct(clv)}</td>
+      <td>${resultBadge}</td>
+      <td>${settledFmt}</td>
+    </tr>`;
+  }).join('');
+
+  const table = document.getElementById('clv-detail-table');
+  table.innerHTML = `<thead>${thead}</thead><tbody>${tbody}</tbody>`;
+
+  // Sort listeners
+  table.querySelectorAll('th[data-col]').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.col;
+      if (sortCol === col) sortAsc = !sortAsc;
+      else { sortCol = col; sortAsc = false; }
+      sortAndRender();
+    });
+  });
+}
+
+// ── Main Render ────────────────────────────────────────────────────────────
+
+function renderUI(betsWithCLV, totalBets, matched) {
+  document.getElementById('app-content').innerHTML = `
+    <div class="stats-row">
+      <div class="stat-card" id="stat-avg"></div>
+      <div class="stat-card" id="stat-beat"></div>
+      <div class="stat-card" id="stat-pos"></div>
+      <div class="stat-card" id="stat-neg"></div>
+      <div class="stat-card" id="stat-won"></div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="panel chart-full">
+        <div class="panel-title">CLV Per Bet <span>— sorted best to worst, up to 40 bets</span></div>
+        <div style="height:260px"><canvas id="chart-clv-bar" height="260"></canvas></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Avg CLV by Sport</div>
+        <div style="height:240px"><canvas id="chart-clv-sport" height="240"></canvas></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">CLV Trend <span>— monthly avg + % beating close</span></div>
+        <div style="height:240px"><canvas id="chart-clv-trend" height="240"></canvas></div>
+      </div>
+
+      <div class="panel chart-full">
+        <div class="panel-title">CLV vs Entry Odds <span>— by result</span></div>
+        <div style="height:260px"><canvas id="chart-clv-result" height="260"></canvas></div>
+      </div>
+
+      <div class="panel chart-full">
+        <div class="panel-title">CLV Detail <span>— ${matched} bets with closing lines</span></div>
+        <div class="table-wrap">
+          <table id="clv-detail-table"></table>
+        </div>
+      </div>
+    </div>`;
+
+  renderStats(betsWithCLV, totalBets, matched);
+  buildCLVBarChart(betsWithCLV);
+  buildCLVBySportChart(betsWithCLV);
+  buildCLVTrendChart(betsWithCLV);
+  buildCLVvResultChart(betsWithCLV);
+  renderTable(betsWithCLV);
+}
+
+// ── Bootstrap ──────────────────────────────────────────────────────────────
+
+async function init() {
+  const dot  = document.getElementById('status-dot');
+  const text = document.getElementById('status-text');
+
+  try {
+    await fetch(API + '/api/status');
+    dot.className = 'dot ok';
+    text.textContent = 'Server online';
+
+    const [betsRes, closingRes] = await Promise.all([
+      fetch(API + '/api/bets').then(r => r.json()),
+      fetch(API + '/api/closing-lines').then(r => r.json()),
+    ]);
+
+    const bets        = betsRes.bets    || [];
+    const closingMap  = closingRes.lines || {};
+
+    document.getElementById('last-updated').textContent =
+      'Updated ' + new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+    // Join bets with closing lines
+    const betsWithCLV = [];
+
+    bets.forEach(b => {
+      const key = b.txId || b.id;
+      const cl  = closingMap[key];
+      if (!cl) return; // no closing line recorded for this bet
+
+      const closingOdds = cl.closingOdds;
+      if (!closingOdds || !b.odds) return;
+
+      const clv = calcCLV(b.odds, closingOdds);
+      betsWithCLV.push({ ...b, closingOdds, clv });
+    });
+
+    if (betsWithCLV.length === 0) {
+      // Show a helpful state — no CLV data yet
+      document.getElementById('app-content').innerHTML = `
+        <div class="no-clv-banner">
+          <strong>No closing line data found yet.</strong><br><br>
+          CLV requires you to record the closing odds for your bets before they start.
+          To log a closing line, call the endpoint directly:<br><br>
+          <code>POST /api/closing-lines</code> with body:
+          <code>{ "lines": [{ "betId": "TICKET_ID", "closingOdds": -115 }] }</code><br><br>
+          As you accumulate closing lines, this tracker will show you whether you're consistently
+          finding value relative to where the market settles.
+        </div>
+        <div class="empty-state">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M3 3l18 18M21 12a9 9 0 11-9-9"/>
+          </svg>
+          <span>No closing line data to display</span>
+          <span style="font-size:12px;color:#3d4260">Add closing lines via POST /api/closing-lines to get started</span>
+        </div>`;
+      return;
+    }
+
+    renderUI(betsWithCLV, bets.length, betsWithCLV.length);
+
+  } catch (err) {
+    dot.className = 'dot err';
+    text.textContent = 'Server offline';
+    document.getElementById('app-content').innerHTML = `
+      <div class="error-state">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span>Cannot reach the Flask server at ${API}</span>
+        <span style="font-size:12px;color:#5c6280">Start <code>python server.py</code>, then refresh.</span>
+      </div>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>

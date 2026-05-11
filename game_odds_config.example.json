@@ -1,0 +1,7 @@
+{
+  "api_key": "YOUR_THE_ODDS_API_KEY_HERE",
+  "poll_interval_hours": 24,
+  "active_sports": ["NBA"],
+  "closing_window_minutes": 45,
+  "notes": "Free tier = 500 credits/month. Copy this file to game_odds_config.json and fill in your key."
+}

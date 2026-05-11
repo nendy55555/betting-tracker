@@ -1,0 +1,9 @@
+{
+  "odds_api_key": "YOUR_THE_ODDS_API_KEY_HERE",
+  "sports": [
+    "nba",
+    "ncaamb",
+    "soccer_ucl",
+    "soccer_epl"
+  ]
+}

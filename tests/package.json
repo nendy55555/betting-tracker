@@ -1,0 +1,9 @@
+{
+  "name": "bt-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dev-only dependencies for Node integration tests. See docs/agent/RUNBOOK.md.",
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}

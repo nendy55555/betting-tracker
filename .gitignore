@@ -1,0 +1,66 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
+.~lock.*
+*.swp
+.idea/
+.vscode/
+
+# Data backups (restore from git history instead)
+*.bak
+*.bak[0-9]
+*.xlsx.bak*
+*.html.bak*
+
+# Local caches the runtime rebuilds
+upcoming_games_cache.json
+odds_history_test.json
+
+# API usage state (rebuilt on each run; safe to delete)
+odds_api_state.json
+
+# Node test deps (jsdom only — installed via `npm install --prefix tests`)
+tests/node_modules/
+tests/package-lock.json
+
+# === Personal bet data (NEVER commit to public repo) ===
+# All real bet records live in Excel; the live runtime owns them.
+*.xlsx
+*.xlsx.test
+*.xlsx.pre-multiuser-backup
+
+# === Config files with embedded API keys ===
+# Use the *.example.json templates instead; the real configs stay local.
+game_odds_config.json
+futures_config.json
+
+# === Operational caches with personal references ===
+odds_history.json
+game_odds_snapshots.json
+futures_cache.json
+futures_event_dates.json
+
+# === Test fixtures with real betting paste data ===
+test_bovada_paste.txt
+
+# === Old backups & archives — keep local, not on GitHub ===
+hardening-backups/
+archive/
+
+# === Stray sandbox test files ===
+.write_test_xyz

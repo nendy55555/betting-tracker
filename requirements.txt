@@ -1,0 +1,35 @@
+# Runtime dependencies — exact pins. Do not use `>=`.
+# If you bump a version, update DECISIONS.md with the reason and run `pytest` to confirm nothing breaks.
+# Last verified: 2026-04-20
+#
+# How to install (first-time or after pulling):
+#   python3 -m venv .venv && source .venv/bin/activate
+#   pip install -r requirements.txt
+#
+# How to freeze after a deliberate upgrade:
+#   pip freeze --exclude-editable > requirements.txt
+#
+# How to test the lock:
+#   pytest -q
+#
+# ────────────────────────────────────────────────────────────────────────
+
+# Web server (server.py)
+Flask==3.0.3
+Flask-Cors==4.0.1
+
+# Excel read / write — openpyxl 3.x is the long-stable line; 4.x is a breaking API change.
+openpyxl==3.1.5
+
+# HTTP client — 2.32.x is the last pre-urllib3-v3 compatible line. Do not jump to 3.x.
+requests==2.32.3
+
+# Selenium scrapers — Selenium 4.25 pairs with webdriver-manager 4.0.2 and Chrome 130+.
+selenium==4.25.0
+webdriver-manager==4.0.2
+
+# HTML parsing (refresh_locks25.py only)
+beautifulsoup4==4.12.3
+
+# .env loader
+python-dotenv==1.0.1
