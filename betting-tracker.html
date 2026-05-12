@@ -38,6 +38,11 @@
   ╚══════════════════════════════════════════════════════════════════╝
 -->
 
+<div id="serverDownBanner" class="server-down-banner" role="status" aria-live="polite" style="display:none">
+  <span class="server-down-dot"></span>
+  <span class="server-down-text">Local server unreachable. Run <code>python server.py</code> in the Betting Tracker folder to enable sync, scrapers, and live odds.</span>
+  <button class="server-down-retry" onclick="pingServer(true)">Retry</button>
+</div>
 <div class="header">
   <div class="logo"><span>Bet</span>Tracker<span style="color:var(--blue)"> Pro</span></div>
   <div class="nav">
@@ -110,7 +115,7 @@
 
   <div class="tab-content" id="futures-tab">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-      <h2 style="font-size:1.2rem">Futures Bets</h2>
+      <h2 style="font-size:var(--fs-lg)">Futures Bets</h2>
       <div style="position:relative">
         <button class="nav-btn" id="steamAlertToggle" onclick="toggleSteamAlerts()" style="font-size:.8rem">Odds Movement <span id="steamBadge" class="steam-badge" style="display:none">0</span></button>
       </div>
@@ -124,13 +129,13 @@
 
     <!-- ===== HIGHLIGHTS SECTION (merged) ===== -->
     <div id="highlights-tab" style="margin-bottom:32px">
-      <h2 style="margin-bottom:16px;font-size:1.2rem">Highlights</h2>
+      <h2 style="margin-bottom:16px;font-size:var(--fs-lg)">Highlights</h2>
       <div id="highlightsContent"></div>
     </div>
 
     <!-- ===== ANALYTICS SECTION ===== -->
     <div style="margin-bottom:32px">
-      <h2 style="margin-bottom:16px;font-size:1.2rem">Analytics</h2>
+      <h2 style="margin-bottom:16px;font-size:var(--fs-lg)">Analytics</h2>
       <div id="analyticsFilterBar" class="chart-filter-bar"></div>
       <div class="analytics-grid">
         <div class="analytics-card"><div class="chart-title" id="cumPLTitle">Cumulative Profit/Loss</div><canvas id="cumPLChart"></canvas></div>
@@ -142,7 +147,7 @@
 
     <!-- ===== DEEP ANALYSIS SECTION (merged) ===== -->
     <div id="deepanalysis-tab" style="margin-bottom:16px">
-      <h2 style="margin-bottom:16px;font-size:1.2rem">Deep Analysis</h2>
+      <h2 style="margin-bottom:16px;font-size:var(--fs-lg)">Deep Analysis</h2>
       <div id="deepFilterBar" class="chart-filter-bar"></div>
       <div class="analytics-grid" style="margin-bottom:16px">
         <div class="analytics-card"><div class="chart-title" id="oddsRangeTitle">P/L by Odds Range</div><canvas id="oddsRangeChart"></canvas></div>

@@ -3,15 +3,36 @@
 --bg:#0d1720;--surface:#152028;--surface2:#192736;--border:#1e3045;
 --green:#00d084;--red:#ff4455;--amber:#ffb833;--blue:#5b8ef7;
 --text:#eaeff4;--text2:#8fa3b4;--text3:#7a8f9e;
+/* Sport accents — all clear WCAG AA (4.5:1) on their 15% tint over --surface2 */
+--sport-nba:#ff9c33;--sport-nfl:#5b9eff;--sport-ncaamb:#c9a0fc;--sport-ncaawb:#f7a8c2;--sport-mlb:#ff7a59;--sport-nhl:#7dd3fc;
 --radius:10px;--radius-sm:6px;
 --shadow:0 2px 12px rgba(0,0,0,.45);
 --shadow-md:0 4px 20px rgba(0,0,0,.5);
 --shadow-lg:0 8px 40px rgba(0,0,0,.6);
---fs-xs:.65rem;--fs-sm:.75rem;--fs-base:.85rem;--fs-md:1rem;--fs-lg:1.25rem;--fs-xl:1.5rem;--fs-2xl:1.75rem;
+--fs-xs:.65rem;--fs-sm:.75rem;--fs-base:.85rem;--fs-md:1rem;--fs-lg:1.25rem;--fs-xl:1.5rem;--fs-2xl:1.75rem;--fs-3xl:2rem;
 }
 html{font-size:15px}
 body{font-family:'Outfit',system-ui,sans-serif;background:var(--bg);background-image:radial-gradient(ellipse 90% 50% at 8% 0%,rgba(0,208,132,0.055) 0%,transparent 65%),radial-gradient(ellipse 70% 60% at 92% 100%,rgba(91,142,247,0.045) 0%,transparent 65%);color:var(--text);min-height:100vh;overflow-x:hidden;font-variant-numeric:tabular-nums}
 a{color:var(--blue);text-decoration:none}
+
+/* ===== SERVER-DOWN BANNER ===== */
+.server-down-banner{display:flex;align-items:center;gap:10px;padding:10px 24px;background:linear-gradient(90deg,rgba(255,184,51,.18),rgba(255,184,51,.08));border-bottom:1px solid rgba(255,184,51,.4);color:var(--text);font-size:var(--fs-sm);font-weight:600;position:sticky;top:0;z-index:101;backdrop-filter:blur(8px)}
+.server-down-banner code{background:rgba(0,0,0,.35);padding:1px 6px;border-radius:4px;font-family:Menlo,monospace;font-size:var(--fs-xs);color:var(--amber)}
+.server-down-banner .server-down-dot{width:8px;height:8px;border-radius:50%;background:var(--amber);box-shadow:0 0 8px rgba(255,184,51,.6);animation:pulse 1.5s infinite;flex-shrink:0}
+.server-down-banner .server-down-text{flex:1}
+.server-down-banner .server-down-retry{background:var(--amber);color:var(--bg);border:none;padding:6px 14px;border-radius:6px;font-family:inherit;font-size:var(--fs-sm);font-weight:700;cursor:pointer;transition:filter .15s}
+.server-down-banner .server-down-retry:hover{filter:brightness(1.15)}
+
+/* ===== SKELETON LOADERS ===== */
+.skeleton-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;padding:10px 12px;overflow:hidden;position:relative}
+.skeleton-card::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.04) 50%,transparent 100%);animation:skeletonShimmer 1.4s infinite;transform:translateX(-100%)}
+.skeleton-line{background:var(--border);border-radius:3px;height:10px;margin-bottom:6px;opacity:.7}
+.skeleton-line.short{width:30%}
+.skeleton-line.mid{width:60%}
+.skeleton-line.full{width:90%}
+.skeleton-line.tag{width:40px;height:14px;display:inline-block;margin-right:6px}
+@keyframes skeletonShimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+
 ::-webkit-scrollbar{width:6px}
 ::-webkit-scrollbar-track{background:var(--surface)}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
@@ -32,16 +53,20 @@ a{color:var(--blue);text-decoration:none}
 .tp-btn.active{border-color:rgba(0,208,132,.4);color:var(--green);background:rgba(0,208,132,.1);box-shadow:0 0 0 1px rgba(0,208,132,.1)}
 
 .content{padding:20px 24px;max-width:1600px;margin:0 auto}
-.tab-content{display:none;opacity:0;transition:opacity .15s ease}
-.tab-content.active{display:block;opacity:1}
+/* Tab fade: keyframe animation runs each time .active is added; opacity:1 keeps tab visible after */
+.tab-content{display:none;opacity:0}
+.tab-content.active{display:block;opacity:1;animation:tabFadeIn .18s ease}
+@keyframes tabFadeIn{from{opacity:0}to{opacity:1}}
 
 .dash-stats{display:grid;grid-template-columns:1.3fr 1fr 1fr 1.3fr 1fr 1fr;gap:12px;margin-bottom:20px}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 16px;text-align:center;box-shadow:var(--shadow);transition:transform .15s,box-shadow .15s}
 .stat-card:hover{transform:translateY(-1px);box-shadow:var(--shadow-md)}
 .stat-card .label{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin-bottom:7px;font-weight:700}
 .stat-card .value{font-size:var(--fs-xl);font-weight:800;letter-spacing:-.5px}
-.stat-card.hero{background:linear-gradient(135deg,var(--surface2) 0%,rgba(26,45,60,.9) 100%);border-color:rgba(0,208,132,.2);border-top:2px solid var(--green);box-shadow:var(--shadow-md),0 0 0 0 rgba(0,208,132,.1)}
-.stat-card.hero .value{font-size:var(--fs-2xl);letter-spacing:-.8px}
+.stat-card.hero{background:linear-gradient(135deg,var(--surface2) 0%,rgba(26,45,60,.9) 100%);border-color:rgba(0,208,132,.2);border-top:3px solid var(--green);box-shadow:var(--shadow-md),0 0 0 0 rgba(0,208,132,.1);position:relative}
+.stat-card.hero.negative{border-top-color:var(--red);border-color:rgba(255,68,85,.2)}
+.stat-card.hero.neutral{border-top-color:var(--text2);border-color:rgba(143,163,180,.2)}
+.stat-card.hero .value{font-size:var(--fs-3xl);letter-spacing:-1px;line-height:1.1}
 .stat-card .value.green{color:var(--green)}
 .stat-card .value.red{color:var(--red)}
 .stat-card .value.amber{color:var(--amber)}
@@ -59,17 +84,19 @@ a{color:var(--blue);text-decoration:none}
 .panel-body{overflow-y:auto;flex:1;padding:12px}
 
 /* Compact bet cards with expand/collapse */
-.bet-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;transition:border-color .15s,box-shadow .15s;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.bet-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;transition:border-color .15s,box-shadow .15s;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.3)}
 .bet-card:hover{border-color:rgba(91,142,247,.3);box-shadow:0 2px 8px rgba(0,0,0,.4)}
 .bet-card-summary{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:10px 12px;cursor:pointer;user-select:none}
-.bet-card-summary .sport-tag{font-size:var(--fs-xs);text-transform:uppercase;font-weight:700;letter-spacing:.7px;padding:2px 6px;border-radius:3px;flex-shrink:0;white-space:nowrap}
-.bet-card-summary .game-time-row{width:100%;font-size:var(--fs-xs);color:var(--amber);margin-top:-2px;padding-left:2px}
-.sport-tag.nba{background:rgba(255,152,0,.15);color:#ff9800}
-.sport-tag.nfl{background:rgba(59,130,246,.15);color:#3b82f6}
-.sport-tag.ncaamb{background:rgba(156,39,176,.15);color:#bb86fc}
-.sport-tag.ncaawb{background:rgba(233,30,99,.15);color:#f48fb1}
-.sport-tag.soccer,.sport-tag.mls{background:rgba(0,208,132,.15);color:#00d084}
-.sport-tag.other{background:rgba(136,153,166,.15);color:#8899a6}
+.bet-card-summary .sport-tag{font-size:var(--fs-sm);text-transform:uppercase;font-weight:700;letter-spacing:.7px;padding:2px 7px;border-radius:3px;flex-shrink:0;white-space:nowrap}
+.bet-card-summary .game-time-row{width:100%;font-size:var(--fs-sm);color:var(--amber);margin-top:-2px;padding-left:2px}
+.sport-tag.nba{background:rgba(255,156,51,.15);color:var(--sport-nba)}
+.sport-tag.nfl{background:rgba(91,158,255,.15);color:var(--sport-nfl)}
+.sport-tag.ncaamb{background:rgba(201,160,252,.15);color:var(--sport-ncaamb)}
+.sport-tag.ncaawb{background:rgba(247,168,194,.15);color:var(--sport-ncaawb)}
+.sport-tag.mlb{background:rgba(255,122,89,.15);color:var(--sport-mlb)}
+.sport-tag.nhl{background:rgba(125,211,252,.15);color:var(--sport-nhl)}
+.sport-tag.soccer,.sport-tag.mls{background:rgba(0,208,132,.15);color:var(--green)}
+.sport-tag.other{background:rgba(143,163,180,.15);color:var(--text2)}
 .source-tag{font-size:var(--fs-xs);text-transform:uppercase;font-weight:600;letter-spacing:.5px;padding:2px 6px;border-radius:3px;flex-shrink:0;white-space:nowrap;background:rgba(136,153,166,.12);color:var(--text2)}
 .bet-card-summary .matchup-line{font-weight:700;font-size:var(--fs-sm);color:var(--text);width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bet-card-summary .bet-row{display:flex;align-items:center;gap:8px;width:100%}
@@ -100,7 +127,7 @@ a{color:var(--blue);text-decoration:none}
 .btn-void:hover{background:rgba(136,153,166,.2)}
 .btn-edit{background:rgba(77,166,255,.15);color:#4da6ff}
 .btn-edit:hover{background:rgba(77,166,255,.25)}
-.bl-edit-btn{background:rgba(77,166,255,.12);color:#4da6ff;border:none;border-radius:4px;padding:3px 9px;font-family:inherit;font-size:.7rem;font-weight:600;cursor:pointer;letter-spacing:.3px}
+.bl-edit-btn{background:rgba(77,166,255,.12);color:#4da6ff;border:none;border-radius:4px;padding:3px 9px;font-family:inherit;font-size:var(--fs-sm);font-weight:600;cursor:pointer;letter-spacing:.3px}
 .bl-edit-btn:hover{background:rgba(77,166,255,.25)}
 /* settled bet cards are navigable — chevron is the only expand trigger now */
 .game-group .bet-card-summary{cursor:pointer}
@@ -156,7 +183,9 @@ a{color:var(--blue);text-decoration:none}
 .future-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;position:relative;box-shadow:var(--shadow);transition:box-shadow .15s,transform .15s}
 .future-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px)}
 .future-card.stale{border-color:rgba(255,68,85,0.6);box-shadow:0 0 0 1px rgba(255,68,85,0.25), var(--shadow)}
-.future-card.stale .stale-banner{display:flex;align-items:center;gap:6px;background:linear-gradient(90deg,rgba(255,68,85,0.18),rgba(255,68,85,0.05));color:#ff4455;font-weight:700;font-size:.72rem;letter-spacing:.04em;text-transform:uppercase;padding:6px 10px;border-radius:5px;margin:-4px -4px 10px;border:1px solid rgba(255,68,85,0.35)}
+.future-card.settled{opacity:.55;background:linear-gradient(180deg,var(--surface) 0%,rgba(13,23,32,.7) 100%)}
+.future-card.settled:hover{opacity:1;transform:translateY(-1px)}
+.future-card.stale .stale-banner{display:flex;align-items:center;gap:6px;background:linear-gradient(90deg,rgba(255,68,85,0.18),rgba(255,68,85,0.05));color:var(--red);font-weight:700;font-size:var(--fs-sm);letter-spacing:.04em;text-transform:uppercase;padding:6px 10px;border-radius:5px;margin:-4px -4px 10px;border:1px solid rgba(255,68,85,0.35)}
 .future-card.stale .stale-banner .stale-ended{color:#ff8c99;font-weight:500;text-transform:none;letter-spacing:0;margin-left:auto}
 .future-card .sport-tag{font-size:var(--fs-xs);text-transform:uppercase;font-weight:700;letter-spacing:.8px;padding:2px 8px;border-radius:4px;display:inline-block;margin-bottom:8px}
 .future-card .pick{font-weight:700;font-size:var(--fs-md);margin-bottom:4px;padding-right:90px}
@@ -306,9 +335,12 @@ a{color:var(--blue);text-decoration:none}
   .chart-filter-bar{padding:8px;gap:6px}
   .futures-grid{grid-template-columns:1fr}
   .panel{max-height:300px}
+  .chatbot{height:240px}
   .highlights-hero{grid-template-columns:repeat(2,1fr)}
   .top-bets-grid{grid-template-columns:1fr}
   #deepBreakdownGrid>div{grid-template-columns:1fr!important}
+  .server-down-banner{padding:8px 12px;font-size:var(--fs-xs);flex-wrap:wrap}
+  .server-down-banner code{font-size:.6rem}
 }
 
 /* ===== DEEP ANALYSIS TAB ===== */
@@ -375,8 +407,10 @@ a{color:var(--blue);text-decoration:none}
   .bet-card-summary{padding:8px 10px}
   .future-card{padding:12px}
   .future-card .pick{font-size:var(--fs-md);padding-right:80px}
-  .filter-btn,.fbtn{padding:8px 12px!important;font-size:var(--fs-sm);min-height:36px}
+  .filter-btn,.fbtn,.tp-btn,.bl-filter-btn{padding:8px 12px!important;font-size:var(--fs-sm);min-height:36px}
+  .refresh-btn,.settings-btn{padding:8px 12px;min-height:36px}
   .btn-win,.btn-loss,.btn-push,.btn-void,.btn-edit,.btn-slip{padding:10px 8px!important;font-size:var(--fs-sm)!important;min-height:44px}
+  .bet-card .chevron{padding:6px 8px}
 }
 @media(max-width:480px){
   .dash-stats{grid-template-columns:1fr 1fr}

@@ -64,3 +64,6 @@ archive/
 
 # === Stray sandbox test files ===
 .write_test_xyz
+
+# === Local Claude/Cowork skills with personal defaults baked in ===
+skills/

@@ -7,7 +7,28 @@
 ---
 
 ## Last updated
-2026-05-11 · Futures isolation + daily odds refresh wired
+2026-05-11 · UI/UX design pass — server-down banner, hero stat upgrades, sport colors in :root, typography floor
+
+## What was completed this session (2026-05-11, evening — design pass)
+
+Acted on the 12-item priority list in `UI_UX_REVIEW.md`. Files touched: `css/styles.css`, `js/dashboard.js`, `js/sync.js`, `betting-tracker.html`.
+
+- **Server-down banner** — sticky yellow banner above the header that surfaces when `/api/bets` fetch fails. Auto-retries every 20s, manual Retry button. `pingServer()` lives in `js/sync.js`, called on `init()` + on demand. Banner DOM in `betting-tracker.html` (before `.header`).
+- **Skeleton loaders** — `showSkeletonsIfEmpty()` paints 4 shimmer placeholders in the Open/Settled panels on first-ever load (when localStorage is empty). Cleared by the next `renderAll()` once sync resolves.
+- **Hero stat cards promoted** — `--fs-3xl: 2rem` added; `.stat-card.hero .value` bumped from `--fs-2xl` (1.75rem) to `--fs-3xl`. Top stripe thickened 2px → 3px. `.hero.negative` (red stripe) and `.hero.neutral` (gray stripe) variants render dynamically from Record + P/L sign in `renderDashStats()`.
+- **Count-up animation** — `.stat-card.hero .value[data-countup]` animates from 0 to target over 600ms on first render. Currently wired for P/L. Flag `window._dashHeroAnimated` prevents replay on filter changes.
+- **Tab fade** — `.tab-content.active` now runs a 0.18s `tabFadeIn` keyframe animation; previous `display:none/block` was killing the fade.
+- **Sport colors moved to :root** — `--sport-nba`, `--sport-nfl`, `--sport-ncaamb`, `--sport-ncaawb`, `--sport-mlb`, `--sport-nhl`. NBA bumped from `#ff9800` (3.7:1 AA fail) to `#ff9c33` (passes). All sport tags now `var(--fs-sm)` instead of `var(--fs-xs)`.
+- **Zero P/L is neutral** — Profit of exactly 0 now renders blue/gray (`.hero.neutral`) instead of green.
+- **Settled futures muted** — `.future-card.settled` gets `opacity: .55` + subtle gradient. Hover lifts to full opacity. "Settled Futures" subsection divider auto-inserts before the first settled card.
+- **Mobile chatbot dropped** — 300px → 240px at `<600px` viewport.
+- **Mobile refresh-btn / settings-btn min-height** — 22px → 36px at `<768px` viewport.
+- **Bet-card border-radius normalized** — 8px → `var(--radius)` (10px) so all cards match.
+- **Orphan font sizes killed** — `0.7rem` (`.bl-edit-btn`), `0.72rem` (stale banner), inline `1.2rem` on 4 tab h2s — all replaced with vars.
+
+Skipped from priority list: full `.pill-btn` rename refactor (#6) and `.card` base class extraction (#10) — both require touching render functions in multiple JS files and weren't worth the regression risk in this pass. Noted in `UI_UX_REVIEW.md` for a future cleanup.
+
+— previous session work kept below for reference —
 
 ---
 

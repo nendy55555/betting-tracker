@@ -34,18 +34,47 @@ function renderDashStats() {
 
   var el = document.getElementById('dashStats');
   if (!el) return;
+  /* Hero card variants: green stripe for positive, red for negative, neutral for zero */
+  var recordHeroClass = wins > losses ? 'hero' : wins < losses ? 'hero negative' : 'hero neutral';
+  var recordColorClass = wins > losses ? 'green' : wins < losses ? 'red' : 'blue';
+  var plHeroClass = profit > 0 ? 'hero' : profit < 0 ? 'hero negative' : 'hero neutral';
+  var plColorClass = profit > 0 ? 'green' : profit < 0 ? 'red' : 'blue';
+  var roiColorClass = roi > 0 ? 'green' : roi < 0 ? 'red' : 'blue';
+  var winPctColorClass = winPct >= 50 ? 'green' : winPct > 0 ? 'red' : 'blue';
+
   el.innerHTML =
-    '<div class="stat-card hero"><div class="label">Record (settled only)</div><div class="value green">' + wins + '-' + losses + (pushes > 0 ? '-' + pushes : '') + '</div>' +
-      '<div style="font-size:.65rem;color:var(--text3);margin-top:4px">Straight: '+sW+'-'+sL+' ('+sWinPct.toFixed(0)+'%) | Parlay: '+pW+'-'+pL+' ('+pWinPct.toFixed(0)+'%)</div></div>' +
-    '<div class="stat-card" title="Win rate excludes pushes from denominator"><div class="label">Win Rate</div><div class="value ' + (winPct >= 50 ? 'green' : winPct > 0 ? 'red' : 'blue') + '">' + winPct.toFixed(1) + '%</div>' +
-      (decisioned < 20 ? '<div style="font-size:.6rem;color:var(--amber);margin-top:4px">Low sample ('+decisioned+' bets)</div>' : '') + '</div>' +
-    '<div class="stat-card"><div class="label">ROI</div><div class="value ' + (roi >= 0 ? 'green' : 'red') + '">' + (roi >= 0 ? '+' : '') + roi.toFixed(1) + '%</div>' +
-      '<div style="font-size:.65rem;color:var(--text3);margin-top:4px">Str: '+(sROI>=0?'+':'')+sROI.toFixed(0)+'% | Par: '+(pROI>=0?'+':'')+pROI.toFixed(0)+'%</div></div>' +
-    '<div class="stat-card hero"><div class="label">Profit / Loss</div><div class="value ' + (profit >= 0 ? 'green' : 'red') + '">' + (profit >= 0 ? '+' : '-') + fmtMoney(profit) + '</div>' +
-      '<div style="font-size:.65rem;color:var(--text3);margin-top:4px">Str: '+(sProfit>=0?'+':'-')+fmtMoney(sProfit)+' | Par: '+(pProfit>=0?'+':'-')+fmtMoney(pProfit)+'</div></div>' +
+    '<div class="stat-card ' + recordHeroClass + '"><div class="label">Record (settled only)</div><div class="value ' + recordColorClass + '">' + wins + '-' + losses + (pushes > 0 ? '-' + pushes : '') + '</div>' +
+      '<div style="font-size:var(--fs-xs);color:var(--text3);margin-top:4px">Straight: '+sW+'-'+sL+' ('+sWinPct.toFixed(0)+'%) | Parlay: '+pW+'-'+pL+' ('+pWinPct.toFixed(0)+'%)</div></div>' +
+    '<div class="stat-card" title="Win rate excludes pushes from denominator"><div class="label">Win Rate</div><div class="value ' + winPctColorClass + '">' + winPct.toFixed(1) + '%</div>' +
+      (decisioned < 20 ? '<div style="font-size:var(--fs-xs);color:var(--amber);margin-top:4px">Low sample ('+decisioned+' bets)</div>' : '') + '</div>' +
+    '<div class="stat-card"><div class="label">ROI</div><div class="value ' + roiColorClass + '">' + (roi >= 0 ? '+' : '') + roi.toFixed(1) + '%</div>' +
+      '<div style="font-size:var(--fs-xs);color:var(--text3);margin-top:4px">Str: '+(sROI>=0?'+':'')+sROI.toFixed(0)+'% | Par: '+(pROI>=0?'+':'')+pROI.toFixed(0)+'%</div></div>' +
+    '<div class="stat-card ' + plHeroClass + '"><div class="label">Profit / Loss</div><div class="value ' + plColorClass + '" data-countup="' + profit.toFixed(2) + '" data-prefix="' + (profit > 0 ? '+$' : profit < 0 ? '-$' : '$') + '">' + (profit > 0 ? '+' : profit < 0 ? '-' : '') + fmtMoney(profit) + '</div>' +
+      '<div style="font-size:var(--fs-xs);color:var(--text3);margin-top:4px">Str: '+(sProfit>=0?'+':'-')+fmtMoney(sProfit)+' | Par: '+(pProfit>=0?'+':'-')+fmtMoney(pProfit)+'</div></div>' +
     '<div class="stat-card"><div class="label">Total Wagered</div><div class="value blue">' + fmtMoney(totalStaked) + '</div></div>' +
     '<div class="stat-card"><div class="label">Open Bets</div><div class="value amber">' + openCount + '</div>' +
-      '<div style="font-size:.6rem;color:var(--text3);margin-top:4px">Updated: '+tsStr+'</div></div>';
+      '<div style="font-size:var(--fs-xs);color:var(--text3);margin-top:4px">Updated: '+tsStr+'</div></div>';
+
+  /* Count-up animation on first render only — flag prevents replay on filter changes */
+  if (!window._dashHeroAnimated) {
+    window._dashHeroAnimated = true;
+    var heroValues = el.querySelectorAll('.stat-card.hero .value[data-countup]');
+    heroValues.forEach(function(node){
+      var target = parseFloat(node.getAttribute('data-countup'));
+      var prefix = node.getAttribute('data-prefix') || '';
+      var absTarget = Math.abs(target);
+      var start = performance.now();
+      var dur = 600;
+      function tick(now){
+        var t = Math.min(1, (now - start) / dur);
+        var eased = 1 - Math.pow(1 - t, 4);
+        var v = absTarget * eased;
+        node.textContent = prefix + v.toFixed(2);
+        if (t < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    });
+  }
 }
 
 /* ===== RENDER: OPEN BETS (compact cards) ===== */
@@ -652,6 +681,7 @@ function renderFutures() {
   var settled    = store.futures.filter(function(b){return b.settled;});
   var all = openStale.concat(openActive).concat(settled);
   var html = '';
+  var renderedFirstSettled = false;
   for (var i = 0; i < all.length; i++) {
     var b = all[i];
     var sc = sportClass(b.sport);
@@ -659,8 +689,15 @@ function renderFutures() {
     var history = lookupOddsHistory(b.pick);
     var staleInfo = staleMap[String(b.id || '')] || staleMap[String(b.txId || '')] || null;
     var staleClass = (staleInfo && !b.settled) ? ' stale' : '';
+    var settledClass = b.settled ? ' settled' : '';
 
-    html += '<div class="future-card' + staleClass + '">';
+    /* Insert a quiet subsection header before the first settled future */
+    if (b.settled && !renderedFirstSettled) {
+      renderedFirstSettled = true;
+      html += '<div class="futures-section-divider" style="grid-column:1/-1;font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:1px;color:var(--text3);font-weight:700;margin:8px 0 -4px;padding:8px 0 0;border-top:1px solid var(--border)">Settled Futures</div>';
+    }
+
+    html += '<div class="future-card' + staleClass + settledClass + '">';
     if (staleInfo && !b.settled) {
       html += '<div class="stale-banner">⚠ EVENT ENDED ' + staleInfo.daysPast + 'd AGO — needs settling';
       if (staleInfo.eventEndDate) html += ' <span class="stale-ended">(' + staleInfo.eventEndDate + ')</span>';

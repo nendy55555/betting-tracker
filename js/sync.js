@@ -391,12 +391,71 @@ function migrateFuturesOutOfBets() {
   }
 }
 
+/* ===== SERVER REACHABILITY ===== */
+/* Pings /api/bets and toggles the global banner. Called on init + on Retry button. */
+function pingServer(showRetryFeedback) {
+  var banner = document.getElementById('serverDownBanner');
+  var retryBtn = banner ? banner.querySelector('.server-down-retry') : null;
+  if (showRetryFeedback && retryBtn) {
+    retryBtn.disabled = true;
+    retryBtn.textContent = 'Checking…';
+  }
+  return fetch('http://localhost:5001/api/bets', { method: 'GET' })
+    .then(function(r) {
+      if (!r.ok) throw new Error('bad status ' + r.status);
+      if (banner) banner.style.display = 'none';
+      return true;
+    })
+    .catch(function() {
+      if (banner) banner.style.display = 'flex';
+      return false;
+    })
+    .finally(function() {
+      if (retryBtn) {
+        retryBtn.disabled = false;
+        retryBtn.textContent = 'Retry';
+      }
+    });
+}
+window.pingServer = pingServer;
+
+/* Quietly re-ping every 20s while the banner is showing — auto-clears the moment server comes back */
+setInterval(function() {
+  var banner = document.getElementById('serverDownBanner');
+  if (banner && banner.style.display !== 'none') pingServer();
+}, 20000);
+
+/* ===== SKELETON LOADERS ===== */
+function skeletonBetCard() {
+  return '<div class="skeleton-card">' +
+    '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">' +
+      '<span class="skeleton-line tag"></span>' +
+      '<span class="skeleton-line short" style="height:10px;width:80px;margin-bottom:0"></span>' +
+    '</div>' +
+    '<div class="skeleton-line full"></div>' +
+    '<div class="skeleton-line mid"></div>' +
+  '</div>';
+}
+function showSkeletonsIfEmpty() {
+  /* Only paint skeletons when localStorage has no data — repeat visitors see real data instantly */
+  if (store.bets.length > 0 || store.futures.length > 0) return;
+  var openEl    = document.getElementById('openBetsList');
+  var settledEl = document.getElementById('settledBetsList');
+  var skel = skeletonBetCard() + skeletonBetCard() + skeletonBetCard() + skeletonBetCard();
+  if (openEl)    openEl.innerHTML    = skel;
+  if (settledEl) settledEl.innerHTML = skel;
+}
+
 /* ===== INIT ===== */
 function init() {
   try {
     loadData();
     migrateFuturesOutOfBets();
+    pingServer();
     renderAll();
+    /* Skeleton has to run AFTER renderAll, since renderAll paints the empty-state.
+       We only overwrite when localStorage was empty — sync will fill in real data shortly. */
+    showSkeletonsIfEmpty();
     setupTextarea();
     /* Fetch ESPN game times for proper sorting, re-render settled when done */
     fetchEspnGameTimes(function() {
