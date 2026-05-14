@@ -470,7 +470,9 @@
       var s = byTeam[key];
       s.count += 1;
       s.staked += Number(b.stake || 0);
-      s.pl += Number(b.winLoss || 0);
+      s.pl += b.result === 'W' ? Number(b.toWin || 0)
+             : b.result === 'L' ? -Number(b.stake || 0)
+             : 0;
       if (b.result === 'W') s.wins++;
       else if (b.result === 'L') s.losses++;
       else if (b.result === 'P') s.pushes++;
