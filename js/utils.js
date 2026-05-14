@@ -29,7 +29,7 @@ function getCachedFiltered() {
   var currentFilter = JSON.stringify(chartFilter || {});
   if (!statsCache.dirty && statsCache.lastFilter === currentFilter) return statsCache;
   /* Single applyChartFilter call — everything else is O(n) passes on the result. */
-  var all = applyChartFilter(store.bets.concat(store.futures));
+  var all = applyChartFilter(store.bets.concat(store.futures)).filter(function(b) { return b.stake > 0; });
   var settled = all.filter(function(b) { return b.settled && b.result; });
   var sortedSettled = settled.slice().sort(function(a, b) { return new Date(a.settledDate || 0) - new Date(b.settledDate || 0); });
   var open = all.filter(function(b) { return !b.settled; });

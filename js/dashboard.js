@@ -655,7 +655,7 @@ function lookupCurrentOdds(pick) {
     /* Word-level match: any significant word in key found in pick */
     var words = k.split(' ');
     for (var j = 0; j < words.length; j++) {
-      if (words[j].length > 4 && p.indexOf(words[j]) !== -1) {
+      if (words[j].length > 3 && p.indexOf(words[j]) !== -1) {
         if (k.length > bestLen) { best = cachedFuturesOdds[k]; bestLen = k.length; }
         break;
       }
@@ -676,28 +676,19 @@ function renderFutures() {
     return !!(staleMap[String(b.id || '')] || staleMap[String(b.txId || '')]);
   };
   /* Surface stale (event-ended) futures to the top so they can't be missed */
-  var openStale  = store.futures.filter(function(b){return !b.settled &&  isStale(b);});
-  var openActive = store.futures.filter(function(b){return !b.settled && !isStale(b);});
-  var settled    = store.futures.filter(function(b){return b.settled;});
-  var all = openStale.concat(openActive).concat(settled);
+  var openStale  = store.futures.filter(function(b){return !b.settled &&  isStale(b) && b.stake > 0;});
+  var openActive = store.futures.filter(function(b){return !b.settled && !isStale(b) && b.stake > 0;});
+  var all = openStale.concat(openActive);
   var html = '';
-  var renderedFirstSettled = false;
   for (var i = 0; i < all.length; i++) {
     var b = all[i];
     var sc = sportClass(b.sport);
     var liveInfo = lookupCurrentOdds(b.pick);
     var history = lookupOddsHistory(b.pick);
     var staleInfo = staleMap[String(b.id || '')] || staleMap[String(b.txId || '')] || null;
-    var staleClass = (staleInfo && !b.settled) ? ' stale' : '';
-    var settledClass = b.settled ? ' settled' : '';
+    var staleClass = staleInfo ? ' stale' : '';
 
-    /* Insert a quiet subsection header before the first settled future */
-    if (b.settled && !renderedFirstSettled) {
-      renderedFirstSettled = true;
-      html += '<div class="futures-section-divider" style="grid-column:1/-1;font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:1px;color:var(--text3);font-weight:700;margin:8px 0 -4px;padding:8px 0 0;border-top:1px solid var(--border)">Settled Futures</div>';
-    }
-
-    html += '<div class="future-card' + staleClass + settledClass + '">';
+    html += '<div class="future-card' + staleClass + '">';
     if (staleInfo && !b.settled) {
       html += '<div class="stale-banner">⚠ EVENT ENDED ' + staleInfo.daysPast + 'd AGO — needs settling';
       if (staleInfo.eventEndDate) html += ' <span class="stale-ended">(' + staleInfo.eventEndDate + ')</span>';
@@ -719,11 +710,10 @@ function renderFutures() {
     }
 
     html += '<span class="sport-tag ' + sc + '">' + escHtml(b.sport || 'Other') + '</span>';
-    if (b.settled) html += '<span class="result-badge ' + b.result + '" style="margin-left:8px">' + b.result + '</span>';
     html += '<div class="pick">' + escHtml(b.pick) + '</div>';
 
     /* Placed odds + current odds row */
-    if (liveInfo && !b.settled) {
+    if (liveInfo) {
       html += '<div class="odds-row">';
       html += '<span class="your-odds">Placed: ' + fmtOdds(b.odds) + '</span>';
       /* Implied probability */
@@ -740,17 +730,15 @@ function renderFutures() {
     html += '<div class="meta">Risk: ' + fmtMoney(b.stake) + ' | To Win: ' + fmtMoney(b.toWin) + '</div>';
 
     /* ── Line movement sparkline ── */
-    if (!b.settled && history && history.length >= 2) {
+    if (history && history.length >= 2) {
       html += buildSparkline(history, b.odds);
     }
 
-    if (!b.settled) {
-      html += '<div class="actions">';
-      html += '<button class="btn-win" onclick="settleFuture(\'' + b.id + '\',\'W\')">Win</button>';
-      html += '<button class="btn-loss" onclick="settleFuture(\'' + b.id + '\',\'L\')">Loss</button>';
-      html += '<button class="btn-void" onclick="deleteBet(\'' + b.id + '\')">Del</button>';
-      html += '</div>';
-    }
+    html += '<div class="actions">';
+    html += '<button class="btn-win" onclick="settleFuture(\'' + b.id + '\',\'W\')">Win</button>';
+    html += '<button class="btn-loss" onclick="settleFuture(\'' + b.id + '\',\'L\')">Loss</button>';
+    html += '<button class="btn-void" onclick="deleteBet(\'' + b.id + '\')">Del</button>';
+    html += '</div>';
     html += '</div>';
   }
   el.innerHTML = html;
