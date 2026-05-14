@@ -322,6 +322,38 @@ function syncFromExcel() {
   });
 }
 
+/* ===== PEER BETS (who else bet on the same game) ===== */
+function fetchPeerBets() {
+  fetch('/api/peer-bets')
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(data) {
+      if (data && data.ok && data.peers) {
+        cachedPeerBets = data.peers;
+        /* Re-render open bets so the new peer data shows up */
+        if (store.currentTab === 'home') renderOpenBets();
+      }
+    })
+    .catch(function() { /* server not running — silently skip */ });
+}
+
+/* ===== SHARP ACTION (Action Network bet % + spreads) ===== */
+function fetchSharpAction(sport) {
+  sport = (sport || 'nfl').toLowerCase();
+  var now = Date.now();
+  var entry = cachedSharpAction[sport];
+  if (entry && (now - entry.fetchedAt) < SHARP_ACTION_TTL_MS) return; /* still fresh */
+
+  fetch('/api/sharp-action?sport=' + encodeURIComponent(sport))
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(data) {
+      if (data && data.games) {
+        cachedSharpAction[sport] = { games: data.games, fetchedAt: Date.now() };
+        if (store.currentTab === 'home') renderOpenBets();
+      }
+    })
+    .catch(function() { /* server not running — silently skip */ });
+}
+
 /* ===== RENDER ALL ===== */
 function renderAll() {
   renderFilterBars();
@@ -497,7 +529,19 @@ function init() {
     }
     /* Only fetch live scores if there are open bets — saves 5 HTTP requests/min when idle */
     var hasOpenBets = store.bets.some(function(b) { return !b.settled; });
-    if (hasOpenBets) fetchLiveScores();
+    if (hasOpenBets) {
+      fetchLiveScores();
+      /* Peer bets + sharp action — fire after a short delay so the main render settles first */
+      setTimeout(function() {
+        fetchPeerBets();
+        /* Fetch sharp action for any sport represented in open bets */
+        var openSports = {};
+        store.bets.filter(function(b) { return !b.settled; }).forEach(function(b) {
+          if (b.sport) openSports[(b.sport || '').toLowerCase()] = true;
+        });
+        Object.keys(openSports).forEach(function(sp) { fetchSharpAction(sp); });
+      }, 1500);
+    }
     /* Smart polling with exponential backoff: only fetch when open bets exist.
        Stops rescheduling once all bets are settled — restarts when a new open bet is added. */
     function pollLiveScores() {

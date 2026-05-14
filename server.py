@@ -1401,6 +1401,136 @@ def get_odds_history():
     return jsonify({'ok': True, 'history': history, 'count': len(history)})
 
 
+# ── peer bets ─────────────────────────────────────────────────────────────────
+
+@app.route('/api/peer-bets', methods=['GET'])
+def get_peer_bets():
+    """Return open bets for all users except the requesting user."""
+    current_user = _get_user(request)
+    result = {}
+    for user in ALLOWED_USERS:
+        if user == current_user:
+            continue
+        try:
+            bets = read_open_bets(user)
+            if bets:
+                result[user] = bets
+        except Exception:
+            pass  # skip users without an xlsx file
+    return jsonify({'ok': True, 'peers': result})
+
+
+# ── sharp action (Action Network) ─────────────────────────────────────────────
+
+_sharp_action_cache = {}   # { sport: { 'data': [...], 'fetched_at': float } }
+SHARP_ACTION_TTL = 15 * 60  # 15 minutes
+
+_AN_SPORT_MAP = {
+    'nfl': 'nfl', 'nba': 'nba', 'ncaab': 'ncaab', 'ncaaf': 'ncaaf',
+    'mlb': 'mlb', 'nhl': 'nhl', 'ncaamb': 'ncaab', 'ncaawb': 'ncaab',
+}
+
+def _parse_an_games(raw):
+    """Normalise an Action Network scoreboard payload into our game schema."""
+    games_raw = raw.get('games') or []
+    result = []
+    for g in games_raw:
+        # Teams can be in a 'teams' array (index 0=away, 1=home) or away_team/home_team keys
+        teams_arr = g.get('teams') or []
+        if len(teams_arr) >= 2:
+            away, home = teams_arr[0], teams_arr[1]
+        else:
+            away = g.get('away_team') or {}
+            home = g.get('home_team') or {}
+
+        if not away and not home:
+            continue
+
+        def _name(t):
+            return (t.get('full_name') or t.get('name') or
+                    t.get('display_name') or t.get('abbr') or '')
+
+        def _bet_pct(t):
+            return (t.get('wagered_pct') or t.get('bet_pct') or
+                    t.get('bets_pct') or t.get('spread_bet_pct'))
+
+        def _money_pct(t):
+            return (t.get('wagered_money_pct') or t.get('money_pct') or
+                    t.get('money_percentage'))
+
+        game = {
+            'id': g.get('id'),
+            'startTime': g.get('start_time') or g.get('scheduled'),
+            'status': g.get('status'),
+            'awayTeam': _name(away),
+            'homeTeam': _name(home),
+            'awayAbbr': away.get('abbr', ''),
+            'homeAbbr': home.get('abbr', ''),
+            'awayBetPct': _bet_pct(away),
+            'homeBetPct': _bet_pct(home),
+            'awayMoneyPct': _money_pct(away),
+            'homeMoneyPct': _money_pct(home),
+        }
+
+        # Extract spread from consensus block or from a books/lines array
+        consensus = g.get('consensus') or {}
+        spread = consensus.get('spread') or {}
+        game['awaySpread'] = spread.get('away_line') or spread.get('away')
+        game['homeSpread'] = spread.get('home_line') or spread.get('home')
+        if game['awaySpread'] is None:
+            for book in (g.get('lines') or g.get('books') or []):
+                if book.get('spread_away') is not None:
+                    game['awaySpread'] = book.get('spread_away')
+                    game['homeSpread'] = book.get('spread_home')
+                    break
+
+        result.append(game)
+    return result
+
+
+@app.route('/api/sharp-action', methods=['GET'])
+def sharp_action():
+    """Fetch spread and public betting % data from Action Network for upcoming games.
+    Query params:
+        sport  — nfl (default), nba, ncaab, mlb, nhl
+    Returns:
+        { ok, source, sport, games: [ { awayTeam, homeTeam, awaySpread, homeSpread,
+                                         awayBetPct, homeBetPct, awayMoneyPct, homeMoneyPct,
+                                         startTime, status } ] }
+    """
+    raw_sport = (request.args.get('sport') or 'nfl').lower().strip()
+    sport = _AN_SPORT_MAP.get(raw_sport, 'nfl')
+
+    cached = _sharp_action_cache.get(sport)
+    if cached and (time.time() - cached['fetched_at']) < SHARP_ACTION_TTL:
+        return jsonify({'ok': True, 'source': 'cache', 'sport': sport,
+                        'games': cached['data']})
+
+    try:
+        url = f'https://api.actionnetwork.com/web/v1/scoreboard/{sport}'
+        headers = {
+            'User-Agent': ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                           'AppleWebKit/537.36 (KHTML, like Gecko) '
+                           'Chrome/124.0 Safari/537.36'),
+            'Accept': 'application/json',
+            'Origin': 'https://www.actionnetwork.com',
+            'Referer': 'https://www.actionnetwork.com/',
+        }
+        resp = requests.get(url, headers=headers, timeout=10)
+        resp.raise_for_status()
+        raw = resp.json()
+
+        games = _parse_an_games(raw)
+        _sharp_action_cache[sport] = {'data': games, 'fetched_at': time.time()}
+        return jsonify({'ok': True, 'source': 'live', 'sport': sport, 'games': games})
+    except Exception as e:
+        # Return cached stale data rather than an error if we have anything
+        if cached:
+            return jsonify({'ok': True, 'source': 'stale', 'sport': sport,
+                            'games': cached['data']})
+        return jsonify({'ok': False, 'error': str(e), 'sport': sport, 'games': []}), 200
+
+
 # ── upcoming games ─────────────────────────────────────────────────────────────
 UPCOMING_CACHE_FILE = os.path.join(SCRIPT_DIR, 'upcoming_games_cache.json')
 

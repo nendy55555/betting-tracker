@@ -132,6 +132,9 @@ function renderOpenBets() {
     html += '</div>';
 
     /* Expandable details */
+    var peerBets = findPeerBets(b);
+    var sharpGame = !isMulti ? findSharpAction(b) : null;
+
     html += '<div class="bet-card-details">';
     if (liveScore) html += '<div class="live-score">' + escHtml(liveScore) + '</div>';
     html += '<div class="detail-row"><span>Matchup</span><strong>' + escHtml(b.matchup) + '</strong></div>';
@@ -141,6 +144,26 @@ function renderOpenBets() {
     html += '<div class="detail-row"><span>To Win</span><strong style="color:var(--green)">' + fmtMoney(b.toWin) + '</strong></div>';
     if (b.type) html += '<div class="detail-row"><span>Type</span><strong>' + b.type + '</strong></div>';
     if (b.source) html += '<div class="detail-row"><span>Site</span><strong>' + escHtml(b.source) + '</strong></div>';
+
+    /* Peer bets — who else has a bet on this game */
+    if (peerBets.length) {
+      html += '<div class="peer-bets-block">';
+      html += '<div class="peer-bets-title">Also on this game</div>';
+      for (var pi = 0; pi < peerBets.length; pi++) {
+        var pb = peerBets[pi];
+        var pbPick = cleanPickString(pb.bet.pick || pb.bet.matchup || '');
+        html += '<div class="peer-bet-row">';
+        html += '<span class="peer-name">' + escHtml(pb.user) + '</span>';
+        html += '<span class="peer-pick">' + escHtml(pbPick) + '</span>';
+        if (pb.bet.stake) html += '<span class="peer-stake">' + fmtMoney(pb.bet.stake) + '</span>';
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+
+    /* Sharp action (Action Network) */
+    html += renderSharpActionHtml(sharpGame);
+
     html += '<div class="actions">';
     html += '<button class="btn-win" onclick="event.stopPropagation();settleBet(\'' + b.id + '\',\'W\')">Win</button>';
     html += '<button class="btn-loss" onclick="event.stopPropagation();settleBet(\'' + b.id + '\',\'L\')">Loss</button>';
@@ -230,6 +253,98 @@ function getOpenBetConsensusBadge(b) {
     return '<span class="consensus-badge public-fade" title="' + money + '% of money on your side — popular/public play">👥 Public</span>';
   }
   return '';
+}
+
+/* Extract normalised team tokens from a matchup string like "Eagles vs Cowboys" */
+function _teamTokens(str) {
+  if (!str) return [];
+  var parts = str.replace(/\bvs\.?\b/gi, ' ').split(/[\s,]+/);
+  return parts.map(function(t) { return t.toLowerCase().trim(); }).filter(function(t) { return t.length > 2; });
+}
+
+/* Find bets from other users that share at least one team with this bet. */
+function findPeerBets(bet) {
+  var myTokens = _teamTokens((bet.espnMatchup || bet.matchup || ''));
+  if (!myTokens.length) return [];
+  var results = [];
+  Object.keys(cachedPeerBets).forEach(function(user) {
+    (cachedPeerBets[user] || []).forEach(function(pb) {
+      var theirTokens = _teamTokens((pb.espnMatchup || pb.matchup || ''));
+      var overlap = myTokens.some(function(t) {
+        return theirTokens.some(function(tt) { return tt.indexOf(t) !== -1 || t.indexOf(tt) !== -1; });
+      });
+      if (overlap) results.push({ user: user, bet: pb });
+    });
+  });
+  return results;
+}
+
+/* Find Action Network sharp action data for a bet by matching team names. */
+function findSharpAction(bet) {
+  var sport = (bet.sport || '').toLowerCase();
+  var entry = cachedSharpAction[sport] || cachedSharpAction['nfl'];
+  if (!entry || !entry.games) return null;
+  var myTokens = _teamTokens((bet.espnMatchup || bet.matchup || ''));
+  if (!myTokens.length) return null;
+  for (var i = 0; i < entry.games.length; i++) {
+    var g = entry.games[i];
+    var gameTokens = _teamTokens((g.awayTeam || '') + ' ' + (g.homeTeam || ''));
+    var overlap = myTokens.some(function(t) {
+      return gameTokens.some(function(gt) { return gt.indexOf(t) !== -1 || t.indexOf(gt) !== -1; });
+    });
+    if (overlap) return g;
+  }
+  return null;
+}
+
+/* Render a compact Sharp Action block for a game (Action Network data). */
+function renderSharpActionHtml(g) {
+  if (!g) return '';
+  var hasBetPct = g.awayBetPct != null && g.homeBetPct != null;
+  var hasMoneyPct = g.awayMoneyPct != null && g.homeMoneyPct != null;
+  var hasSpread = g.awaySpread != null;
+  if (!hasBetPct && !hasMoneyPct && !hasSpread) return '';
+
+  var html = '<div class="sharp-action-block">';
+  html += '<div class="sharp-action-title">Sharp Action (Action Network)</div>';
+
+  if (hasSpread) {
+    var awaySprd = g.awaySpread > 0 ? '+' + g.awaySpread : g.awaySpread;
+    var homeSprd = g.homeSpread > 0 ? '+' + g.homeSpread : g.homeSpread;
+    html += '<div class="sharp-row">';
+    html += '<span class="sharp-label">Spread</span>';
+    html += '<span class="sharp-val">' + escHtml(g.awayAbbr || g.awayTeam) + ' ' + awaySprd + ' / ' + escHtml(g.homeAbbr || g.homeTeam) + ' ' + homeSprd + '</span>';
+    html += '</div>';
+  }
+
+  if (hasBetPct) {
+    var awayBetW = Math.round(g.awayBetPct);
+    var homeBetW = Math.round(g.homeBetPct);
+    html += '<div class="sharp-row">';
+    html += '<span class="sharp-label">% Bets</span>';
+    html += '<span class="sharp-val">';
+    html += '<span class="sharp-bar-wrap">';
+    html += '<span class="sharp-bar-fill" style="width:' + awayBetW + '%"></span>';
+    html += '</span>';
+    html += escHtml(g.awayAbbr || g.awayTeam) + ' ' + awayBetW + '% &nbsp;|&nbsp; ' + escHtml(g.homeAbbr || g.homeTeam) + ' ' + homeBetW + '%';
+    html += '</span></div>';
+  }
+
+  if (hasMoneyPct) {
+    var awayMonW = Math.round(g.awayMoneyPct);
+    var homeMonW = Math.round(g.homeMoneyPct);
+    html += '<div class="sharp-row">';
+    html += '<span class="sharp-label">% Money</span>';
+    html += '<span class="sharp-val">';
+    html += '<span class="sharp-bar-wrap">';
+    html += '<span class="sharp-bar-fill money" style="width:' + awayMonW + '%"></span>';
+    html += '</span>';
+    html += escHtml(g.awayAbbr || g.awayTeam) + ' ' + awayMonW + '% &nbsp;|&nbsp; ' + escHtml(g.homeAbbr || g.homeTeam) + ' ' + homeMonW + '%';
+    html += '</span></div>';
+  }
+
+  html += '</div>';
+  return html;
 }
 
 /* ===== RENDER: SETTLED BETS (grouped by game) ===== */
