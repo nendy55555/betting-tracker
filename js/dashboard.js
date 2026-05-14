@@ -1174,7 +1174,146 @@ function renderWeeklyChart() {
   }
 }
 
-function renderHomeCharts() { renderROIChart(); renderBankrollChart(); renderWLChart(); renderSportChart(); }
+function renderHomeCharts() { renderROIChart(); renderBankrollChart(); renderWLChart(); renderSportChart(); renderEquityCurve(); }
+
+/* ===== ROLLING BANKROLL EQUITY CURVE ===== */
+window._equityFilter = window._equityFilter || 'all';
+
+function setEquityFilter(f) {
+  window._equityFilter = f;
+  renderEquityCurve();
+}
+
+function renderEquityCurve() {
+  var ctx = document.getElementById('equityChart');
+  if (!ctx) return;
+
+  /* Gather all settled bets with a resolvable date */
+  var allSettled = store.bets.filter(function(b) {
+    return b.settled && b.result && b.result !== 'P';
+  });
+
+  /* Build dynamic sport list for pills */
+  var sportSet = {};
+  allSettled.forEach(function(b) { if (b.sport) sportSet[b.sport] = true; });
+  var sports = Object.keys(sportSet).sort();
+
+  var pillsEl = document.getElementById('equityPills');
+  if (pillsEl) {
+    var pillDefs = [{ key: 'all', label: 'All' }, { key: 'straight', label: 'Straights' }, { key: 'parlay', label: 'Parlays' }];
+    sports.forEach(function(s) { pillDefs.push({ key: 'sport:' + s, label: s }); });
+    pillsEl.innerHTML = pillDefs.map(function(p) {
+      var active = window._equityFilter === p.key ? ' active' : '';
+      return '<button class="equity-pill' + active + '" onclick="setEquityFilter(\'' + p.key + '\')">' + p.label + '</button>';
+    }).join('');
+  }
+
+  /* Apply filter */
+  var f = window._equityFilter;
+  var bets = allSettled.filter(function(b) {
+    if (f === 'all') return true;
+    if (f === 'parlay') return b.type === 'parlay' || /parlay/i.test(b.matchup || '');
+    if (f === 'straight') return b.type !== 'parlay' && !/parlay/i.test(b.matchup || '');
+    if (f.indexOf('sport:') === 0) return b.sport === f.slice(6);
+    return true;
+  });
+
+  /* Sort by settle/game date, fall back to addedDate */
+  bets = bets.slice().sort(function(a, b) {
+    return resolveEquityDate(a) - resolveEquityDate(b);
+  });
+
+  /* Build {date, cum} series — group by calendar day */
+  var dayMap = {};
+  var dayOrder = [];
+  var cum = 0;
+  bets.forEach(function(b) {
+    var ms = resolveEquityDate(b);
+    if (!ms) return;
+    var d = new Date(ms);
+    var key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    if (!dayMap[key]) { dayMap[key] = 0; dayOrder.push(key); }
+    if (b.result === 'W') dayMap[key] += (b.toWin || 0);
+    else if (b.result === 'L') dayMap[key] -= (b.stake || 0);
+  });
+
+  /* Walk into cumulative series */
+  var labels = [], data = [];
+  var running = 0;
+  dayOrder.forEach(function(key) {
+    running += dayMap[key];
+    /* Friendly label: "Jan 3" */
+    var parts = key.split('-');
+    var dt = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    var monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    labels.push(monthNames[dt.getMonth()] + ' ' + dt.getDate());
+    data.push(+running.toFixed(2));
+  });
+
+  /* Prepend a zero anchor */
+  labels.unshift('Start');
+  data.unshift(0);
+
+  var finalVal = data[data.length - 1] || 0;
+  var lineColor = finalVal >= 0 ? '#00d084' : '#ff4757';
+  var fillColor = finalVal >= 0 ? 'rgba(0,208,132,0.08)' : 'rgba(255,71,87,0.08)';
+
+  /* Dynamic title on panel header */
+  var titleEl = document.querySelector('#equityCurvePanel .equity-curve-title');
+  if (titleEl) {
+    var label = bets.length === 0 ? 'Bankroll Equity Curve' :
+      (finalVal >= 0 ? 'Up +' : 'Down ') + fmtMoney(finalVal) + ' over ' + bets.length + ' bet' + (bets.length !== 1 ? 's' : '');
+    titleEl.textContent = label;
+  }
+
+  var zeroPlugin = {
+    id: 'equityZero',
+    afterDraw: function(chart) {
+      var yScale = chart.scales.y;
+      if (!yScale) return;
+      var yPx = yScale.getPixelForValue(0);
+      if (yPx < yScale.top || yPx > yScale.bottom) return;
+      var c = chart.ctx;
+      c.save();
+      c.beginPath();
+      c.setLineDash([4, 4]);
+      c.strokeStyle = 'rgba(255,255,255,0.2)';
+      c.lineWidth = 1;
+      c.moveTo(chart.chartArea.left, yPx);
+      c.lineTo(chart.chartArea.right, yPx);
+      c.stroke();
+      c.restore();
+    }
+  };
+
+  var scaleOpts = {
+    x: { ticks: { color: '#556677', font: { size: 10 }, maxTicksLimit: 10, maxRotation: 30 }, grid: { color: 'rgba(36,48,64,0.5)' } },
+    y: { ticks: { color: '#556677', font: { size: 10 }, callback: function(v) { return (v >= 0 ? '+$' : '-$') + Math.abs(v).toFixed(0); } }, grid: { color: 'rgba(36,48,64,0.5)' } }
+  };
+
+  if (charts.equity) {
+    charts.equity.data.labels = labels;
+    charts.equity.data.datasets[0].data = data;
+    charts.equity.data.datasets[0].borderColor = lineColor;
+    charts.equity.data.datasets[0].backgroundColor = fillColor;
+    charts.equity.update();
+  } else {
+    charts.equity = new Chart(ctx, {
+      type: 'line',
+      data: { labels: labels, datasets: [{ label: 'Cumulative P/L', data: data, borderColor: lineColor, backgroundColor: fillColor, fill: true, tension: 0.3, pointRadius: data.length > 60 ? 0 : 3, pointHoverRadius: 5 }] },
+      options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { var v = ctx.parsed.y; return (v >= 0 ? '+$' : '-$') + Math.abs(v).toFixed(2); } } } }, scales: scaleOpts },
+      plugins: [zeroPlugin]
+    });
+  }
+}
+
+function resolveEquityDate(b) {
+  /* Prefer the actual game/settle time over when the bet was entered */
+  if (b.settledDate) { var sd = new Date(b.settledDate).getTime(); if (sd > 0) return sd; }
+  if (b.gameTime) { var gt = parseGameDate(b.gameTime); if (gt > 0) return gt; }
+  if (b.addedDate) { var ad = new Date(b.addedDate).getTime(); if (ad > 0) return ad; }
+  return 0;
+}
 function renderAnalyticsCharts() { renderSummaryDashCard(); renderCumPLChart(); renderWinRateSportChart(); renderBetSizeChart(); renderWeeklyChart(); }
 
 /* ===== SUMMARY DASHBOARD CARD (the "5-second glance" card) ===== */
