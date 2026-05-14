@@ -96,8 +96,10 @@ function renderBetLog() {
     html += '<td class="bl-muted" style="white-space:nowrap">' + escHtml(dateStr) + '</td>';
     html += '<td><span class="sport-tag ' + sc + '">' + escHtml(b.sport || 'Other') + '</span></td>';
     html += '<td class="bl-muted" style="font-size:.72rem;white-space:nowrap">' + typeLabel + '</td>';
-    html += '<td class="bl-matchup bl-muted" title="' + escHtml(b.matchup || '') + '">' + escHtml(b.matchup || '—') + '</td>';
-    html += '<td class="bl-pick" title="' + escHtml(b.pick || '') + '">' + escHtml(b.pick || '—') + '</td>';
+    var cleanMatchup = shortenMatchupDisplay(b.matchup) || b.matchup || '—';
+    var cleanPick    = buildPickDisplay(b) || '—';
+    html += '<td class="bl-matchup bl-muted" title="' + escHtml(b.matchup || '') + '">' + escHtml(cleanMatchup) + '</td>';
+    html += '<td class="bl-pick" title="' + escHtml(b.pick || '') + '">' + escHtml(cleanPick) + '</td>';
     html += '<td class="bl-num bl-muted">' + fmtOdds(b.odds) + '</td>';
     html += '<td class="bl-num">' + fmtMoney(b.stake || 0) + '</td>';
     html += '<td class="bl-num bl-muted">' + fmtMoney(b.toWin || 0) + '</td>';
@@ -184,6 +186,7 @@ function mapServerBet(b) {
     sport:       b.sport || 'Other',
     type:        b.type  || 'straight',
     matchup:     b.matchup || '',
+    line:        b.line    || '',
     pick:        b.pick   || b.matchup || '',
     odds:        b.odds   || 0,
     stake:       b.stake  || 0,

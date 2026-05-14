@@ -351,20 +351,85 @@ function normalizeTeamKeyForGrouping(name) {
 
 /* Human-readable matchup with mascots stripped for clean group headers.
    "Vanderbilt Commodores vs Nebraska Cornhuskers" -> "Vanderbilt vs Nebraska"
-   Also strips Bovada sport prefix ("Basketball Duke vs...") and bet-type suffix ("...vs X - Money Line: Y") */
+   Also handles "49ers @ Seahawks" format and strips Bovada seed numbers like (#11). */
 function shortenMatchupDisplay(matchup) {
   if (!matchup) return matchup;
   var MASCOTS = /\s+(?:Commodores|Cornhuskers|Wolverines|Buckeyes|Gators|Crimson Tide|Blue Devils|Tar Heels|Wolfpack|Orange|Seminoles|Wildcats|Cyclones|Boilermakers|Hurricanes|Hawkeyes|Hoosiers|Bulldogs|Huskies|Jayhawks|Cardinals|Spartans|Cavaliers|Longhorns|Volunteers|Aggies|Rams|Tigers|Bears|Cougars|Razorbacks|Badgers|Gophers|Bruins|Ducks|Trojans|Flyers|Friars|Gaels|Shockers|Ramblers|Paladins|Terrapins|Terps|Zags|Pilots|Sooners|Mustangs|Eagles|Knights|Panthers|Owls|Flames|Beavers|Peacocks|Red Raiders|Horned Frogs|Anteaters|Utes|Mountaineers|Colonels|Cowboys|Pioneers|Governors|Bison|Monarchs|Braves|Buccaneers|Sharks|Dons|Terriers|Broncos)\s*$/i;
   /* Strip Bovada bet-type suffix before splitting: "...vs Team B - Money Line: Team A (+167)" */
   matchup = matchup.replace(/\s+-\s+(?:Money Line|Moneyline|Point Spread|Total(?:\s+Points)?|3-Way Moneyline|Spread)[:\s].*$/i, '').trim();
-  var parts = matchup.split(/\s+vs\.?\s+/i);
+  /* Detect separator — prefer @ (preserves home/away context), fall back to vs */
+  var sep, parts;
+  if (/\s+@\s+/.test(matchup)) {
+    sep = ' @ ';
+    parts = matchup.split(/\s+@\s+/);
+  } else {
+    sep = ' vs ';
+    parts = matchup.split(/\s+vs\.?\s+/i);
+  }
   return parts.map(function(t) {
     t = t.replace(/\s+(?:Live Straight|Live Game|Live|Straight)\s*(?:\([+-]?\d+\))?.*$/i, '').trim();
     t = t.replace(/\s*\([+-]?\d+\)\s*$/, '').trim();
+    /* Strip seed/ranking suffixes like "(#11)" or "(#6)" */
+    t = t.replace(/\s*\(#?\d+\)\s*/g, '').trim();
     /* Strip Bovada sport category prefix: "Basketball Duke Blue Devils" → "Duke Blue Devils" */
     t = t.replace(/^(?:Basketball|Football|Baseball|Hockey|Soccer|Tennis|Boxing|MMA|Golf|Cricket|College)\s+/i, '').trim();
     return t.replace(MASCOTS, '').trim();
-  }).join(' vs ');
+  }).join(sep);
+}
+
+/* Extract the "picked team" from a matchup string.
+   For "Team A vs/@ Team B": returns the first team (Team A = the side you bet on).
+   For single-team entries like "Jags - 3.5": strips the embedded line and returns the team name. */
+function extractTeamFromMatchup(matchup) {
+  if (!matchup) return '';
+  var vsMatch = matchup.match(/^(.+?)\s+(?:vs\.?|@)\s+/i);
+  if (vsMatch) {
+    var team = vsMatch[1].trim();
+    /* Strip Bovada sport prefix */
+    team = team.replace(/^(?:Basketball|Football|Baseball|Hockey|Soccer|Tennis|Boxing|MMA|Golf|Cricket|College)\s+/i, '').trim();
+    /* Strip seed/ranking like (#11) */
+    team = team.replace(/\s*\(#?\d+\)\s*/g, '').trim();
+    /* Strip mascots */
+    team = team.replace(/\s+(?:Commodores|Cornhuskers|Wolverines|Buckeyes|Gators|Crimson Tide|Blue Devils|Tar Heels|Wolfpack|Orange|Seminoles|Wildcats|Cyclones|Boilermakers|Hurricanes|Hawkeyes|Hoosiers|Bulldogs|Huskies|Jayhawks|Cardinals|Spartans|Cavaliers|Longhorns|Volunteers|Aggies|Rams|Tigers|Bears|Cougars|Razorbacks|Badgers|Gophers|Bruins|Ducks|Trojans|Flyers|Friars|Gaels|Shockers|Ramblers|Paladins|Terrapins|Terps|Zags|Pilots|Sooners|Mustangs|Eagles|Knights|Panthers|Owls|Flames|Beavers|Peacocks|Red Raiders|Horned Frogs|Anteaters|Utes|Mountaineers|Colonels|Cowboys|Pioneers|Governors|Bison|Monarchs|Braves|Buccaneers|Sharks|Dons|Terriers|Broncos)\s*$/i, '').trim();
+    return normalizeTeamName(team);
+  }
+  /* Single-team matchup: strip embedded line/bet-type info to recover the bare team name */
+  var team = matchup
+    .replace(/\s+(?:\d[HQ])\b.*/i, '')             /* "2H ML Live", "1Q -3.5" */
+    .replace(/\s+Live\b.*/i, '')                    /* "Live ML" */
+    .replace(/\s+ML\b.*/i, '')                      /* "ML" */
+    .replace(/\s+(?:[-+]\s*)?\d[\d.]*\s*$/i, '')   /* trailing spread like "- 3.5" or "+4.5" */
+    .trim();
+  return normalizeTeamName(team) || normalizeTeamName(matchup);
+}
+
+/* Build the clean pick label for the bet log: "Team spread-or-ML" with no odds.
+   Keeps parlays as-is (just strips redundant "Parlay Parlay" and trailing odds). */
+function buildPickDisplay(b) {
+  if (!b) return '';
+  var matchup = b.matchup || '';
+  var line    = (b.line || '').replace(/\s*\([+-]?\d+\)\s*$/, '').trim();
+  var pick    = (b.pick  || '').trim();
+  var type    = b.type   || '';
+
+  /* Parlays: clean up but keep team list intact */
+  if (type === 'parlay') {
+    return pick
+      .replace(/\bParlay\s+Parlay\b/gi,   'Parlay')
+      .replace(/\bML Parlay Parlay\b/gi,   'ML Parlay')
+      .replace(/\s*\([+-]?\d+\)\s*$/,      '')
+      .trim() || pick;
+  }
+
+  var team = extractTeamFromMatchup(matchup);
+
+  if (team && line && line.toUpperCase() !== 'N/A') {
+    return team + ' ' + line;
+  }
+  if (team) return team;
+
+  /* Fallback: strip odds from raw pick string */
+  return pick.replace(/\s*\([+-]?\d+\)\s*$/, '').trim() || pick;
 }
 
 
