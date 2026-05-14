@@ -114,12 +114,10 @@ function btTriggerScraper(which) {
       var status = (data && data.status) || { slug: 'unknown', label: 'No status returned' };
       _btRenderBadge(which, status);
       /* Refresh the dashboard if scrape succeeded */
-      if (status.ok && typeof renderAll === 'function') {
+      if (status.ok) {
         try {
-          if (data.bets)      store.bets = data.bets;
-          if (data.open_bets) store.openBets = data.open_bets;
-          if (typeof saveData === 'function') saveData();
-          renderAll();
+          if (typeof syncFromExcel === 'function') syncFromExcel();
+          else if (typeof renderAll === 'function') renderAll();
         } catch (e) { /* non-fatal */ }
       }
       /* Also refresh budget — scrape may have updated Odds API usage */
