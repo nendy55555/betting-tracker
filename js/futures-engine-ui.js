@@ -287,6 +287,7 @@
         }
         // Drop the settled row from the local state immediately
         STATE.futures = STATE.futures.filter(function (x) { return x.id !== betId; });
+        publishStaleIds(); // keep window.__btStaleFutures in sync so card re-renders are clean
         renderBanner();
         renderPanel();
       })

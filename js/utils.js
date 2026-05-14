@@ -93,9 +93,14 @@ function applyChartFilter(bets) {
       cutoff = new Date();
       cutoff.setDate(cutoff.getDate() - days);
     }
+    var cutoffMs = cutoff.getTime();
     filtered = filtered.filter(function(b) {
-      var d = b.settledDate ? new Date(b.settledDate) : (b.addedDate ? new Date(b.addedDate) : null);
-      return d && d >= cutoff;
+      /* Use gameTime as the primary date (matches the sort key) so a bet
+         settled today for a March game isn't treated as a recent bet. */
+      var ts = (b.gameTime ? parseGameDate(b.gameTime) : 0)
+            || (b.settledDate ? new Date(b.settledDate).getTime() : 0)
+            || (b.addedDate ? new Date(b.addedDate).getTime() : 0);
+      return ts > 0 && ts >= cutoffMs;
     });
   }
   if (chartFilter.search) {

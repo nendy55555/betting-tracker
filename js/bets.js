@@ -36,6 +36,22 @@ function settleFuture(id, result) {
   }
   invalidateStats();
   runBetPipeline([]); /* sort + save + render */
+
+  /* Persist to server so the Excel file reflects the settlement and the
+     stale-futures poll stops returning this bet. Best-effort — local state
+     is already correct even if the server call fails. */
+  fetch('/api/settle-bet', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ betId: id, result: result, winningTeam: null }),
+  })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data.ok && typeof window.BT_refreshStaleFutures === 'function') {
+        window.BT_refreshStaleFutures();
+      }
+    })
+    .catch(function () { /* best-effort */ });
 }
 
 function deleteBet(id) {
