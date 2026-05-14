@@ -20,15 +20,36 @@ Endpoints:
     GET  /api/status            → health-check
 """
 
-import os, sys, json, re, subprocess, time
+import os, sys, json, re, subprocess, time, logging
 from datetime import datetime, timedelta
 import openpyxl
 import requests
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, g
 from flask_cors import CORS
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%H:%M:%S',
+)
+logger = logging.getLogger('bt')
 
 app = Flask(__name__, static_folder='.', static_url_path='/static')
 CORS(app)  # allow file:// origin from the HTML dashboard
+
+
+@app.before_request
+def _req_start():
+    g.t0 = time.monotonic()
+
+
+@app.after_request
+def _req_log(response):
+    elapsed = round((time.monotonic() - g.t0) * 1000)
+    user = request.args.get('user', DEFAULT_USER) if request.args else DEFAULT_USER
+    logger.info('%s %s → %d [user=%s %dms]',
+                request.method, request.path, response.status_code, user, elapsed)
+    return response
 
 
 @app.route('/')
@@ -185,7 +206,7 @@ def parse_date_str(s):
             return dt.isoformat() + '.000Z'
         except Exception:
             pass
-    print(f"[WARN] Could not parse date: '{s}' — returning None")
+    logger.warning("Could not parse date %r — returning None", s)
     return None
 
 def format_game_time(s):
@@ -328,7 +349,7 @@ def read_settled_bets(user=DEFAULT_USER):
         cache['mtime'] = 0
         raise
     except Exception as e:
-        print(f"Error reading settled bets from Excel ({user}): {e}")
+        logger.error("Error reading settled bets (%s): %s", user, e)
         cache['settled'] = []
         cache['mtime'] = 0
         return []
@@ -415,7 +436,7 @@ def read_open_bets(user=DEFAULT_USER):
         cache['mtime'] = 0
         raise
     except Exception as e:
-        print(f"Error reading open bets from Excel ({user}): {e}")
+        logger.error("Error reading open bets (%s): %s", user, e)
         cache['open'] = []
         cache['mtime'] = 0
         return []
@@ -459,6 +480,35 @@ def status():
             'futures_cache_keys': list(_futures_cache.keys()),
         }
     })
+
+
+@app.route('/api/health', methods=['GET'])
+def health():
+    """Deep health check: verifies each user's xlsx is present and openable.
+    Returns HTTP 200 when all files are readable, HTTP 503 if any are missing
+    or locked. Intended for debugging — more thorough than /api/status."""
+    checks = {}
+    all_ok = True
+    for u in ALLOWED_USERS:
+        path = tracker_path_for(u)
+        entry = {'path': path, 'ok': False}
+        try:
+            wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+            wb.close()
+            entry['ok'] = True
+        except FileNotFoundError:
+            entry['error'] = 'file not found'
+            all_ok = False
+        except PermissionError:
+            entry['error'] = 'file locked (close it in Excel)'
+            all_ok = False
+        except Exception as e:
+            entry['error'] = str(e)
+            all_ok = False
+        checks[u] = entry
+
+    status_code = 200 if all_ok else 503
+    return jsonify({'ok': all_ok, 'checks': checks}), status_code
 
 
 def _excel_error_payload(e, path=None):
@@ -681,7 +731,7 @@ def refresh_locks25():
             )
             status = _exit_info(result.returncode)
             if result.returncode != 0:
-                print(f"refresh_locks25.py exited {result.returncode} ({status['slug']}):", result.stderr[-500:])
+                logger.warning("refresh_locks25 exited %d (%s): %s", result.returncode, status['slug'], result.stderr[-500:])
         else:
             status = {"code": -1, "slug": "missing", "label": "Scraper script not found", "ok": False}
 
@@ -718,7 +768,7 @@ def refresh_bovada():
             )
             status = _exit_info(result.returncode)
             if result.returncode != 0:
-                print(f"refresh_bovada.py exited {result.returncode} ({status['slug']}):", result.stderr[-500:])
+                logger.warning("refresh_bovada exited %d (%s): %s", result.returncode, status['slug'], result.stderr[-500:])
         else:
             status = {"code": -1, "slug": "missing", "label": "Scraper script not found", "ok": False}
 
@@ -766,7 +816,7 @@ def _save_futures_config(config):
         with open(FUTURES_CONFIG_FILE, 'w') as f:
             json.dump(config, f, indent=2)
     except Exception as e:
-        print(f"Warning: could not save futures_config.json: {e}")
+        logger.warning("Could not save futures_config.json: %s", e)
 
 
 # Futures odds cache — keyed by sorted sports string so nba vs nba+ncaamb are cached separately.
@@ -855,7 +905,7 @@ def _save_odds_history(history):
         with open(ODDS_HISTORY_FILE, 'w') as f:
             json.dump(history, f, indent=1)
     except Exception as e:
-        print(f"Failed to save odds history: {e}")
+        logger.warning("Failed to save odds history: %s", e)
 
 
 def _append_odds_to_history(current_odds):
@@ -974,7 +1024,7 @@ def _fetch_the_odds_api(sports, api_key):
                                         count += 1
                                     except (ValueError, TypeError):
                                         pass
-                print(f"  TheOddsAPI [{sport}]: {count} outcomes fetched (remaining: {remaining})")
+                logger.info("TheOddsAPI [%s]: %d outcomes fetched (remaining=%s)", sport, count, remaining)
             elif r.status_code == 401:
                 errors.append(f'{sport}: The Odds API — invalid key')
             elif r.status_code == 422:
@@ -1021,7 +1071,7 @@ def _fetch_bovada(sports):
                                         'bookmaker': 'Bovada',
                                     }
                                     count += 1
-                print(f"  Bovada [{sport}]: {count} outcomes fetched")
+                logger.info("Bovada [%s]: %d outcomes fetched", sport, count)
             elif r.status_code == 404:
                 errors.append(f'{sport}: Bovada futures market not found (may be off-season)')
             else:
@@ -1112,7 +1162,7 @@ def _fetch_espn(sports):
                     if parsed:
                         all_odds.update(parsed)
                         fetched = True
-                        print(f"  ESPN [{sport}]: {len(parsed)} teams fetched")
+                        logger.info("ESPN [%s]: %d teams fetched", sport, len(parsed))
                         break
                     else:
                         errors.append(f'{sport}: ESPN 200 but no odds parsed')
@@ -1181,7 +1231,7 @@ def get_futures_odds():
                 file_cache = json.load(f)
             age = time.time() - file_cache.get('timestamp', 0)
             if age < _FUTURES_CACHE_TTL and file_cache.get('odds'):
-                print(f'  Serving from futures_cache.json (age {age/3600:.1f}h)')
+                logger.info("futures-odds: serving cached data (age %.1fh)", age / 3600)
                 return jsonify({
                     'ok':     True,
                     'odds':   file_cache['odds'],
@@ -1316,8 +1366,10 @@ def capture_closing_lines():
     Body: { "lines": [ { "betId": "...", "closingOdds": -115 }, ... ] }
     """
     try:
-        data = request.get_json(force=True)
+        data = request.get_json(force=True) or {}
         lines = data.get('lines', [])
+        if not isinstance(lines, list):
+            return jsonify({'ok': False, 'error': "'lines' must be an array", 'code': 'BAD_INPUT'}), 400
         if not lines:
             return jsonify({'ok': True, 'saved': 0})
 
@@ -1336,12 +1388,13 @@ def capture_closing_lines():
         for item in lines:
             bet_id = item.get('betId', '')
             closing = item.get('closingOdds')
-            if bet_id and closing is not None:
-                existing[bet_id] = {
-                    'closingOdds': closing,
-                    'ts': ts,
-                }
-                saved += 1
+            if not bet_id or not isinstance(closing, (int, float)):
+                continue
+            existing[bet_id] = {
+                'closingOdds': closing,
+                'ts': ts,
+            }
+            saved += 1
 
         with open(cl_file, 'w') as f:
             json.dump(existing, f, indent=1)
@@ -1552,7 +1605,7 @@ def upcoming_games():
             if age_hours < 4:
                 return jsonify({'ok': True, 'source': 'cache', **data})
         except Exception as e:
-            print(f'[upcoming] cache read error: {e}')
+            logger.warning("upcoming-games: cache read error: %s", e)
 
     # Live fallback — call fetch_upcoming_games.py as a subprocess
     try:
@@ -1709,14 +1762,24 @@ def clv_config():
 
     # POST — save config
     try:
-        data = request.get_json(force=True)
+        data = request.get_json(force=True) or {}
         config = _load_game_odds_config()
 
         if 'api_key' in data:
-            config['api_key'] = data['api_key']
+            config['api_key'] = str(data['api_key'])
         if 'poll_interval_hours' in data:
-            config['poll_interval_hours'] = data['poll_interval_hours']
+            try:
+                h = float(data['poll_interval_hours'])
+                if h <= 0:
+                    raise ValueError
+                config['poll_interval_hours'] = h
+            except (TypeError, ValueError):
+                return jsonify({'ok': False, 'error': 'poll_interval_hours must be a positive number',
+                                'code': 'BAD_INPUT'}), 400
         if 'active_sports' in data:
+            if not isinstance(data['active_sports'], list):
+                return jsonify({'ok': False, 'error': 'active_sports must be an array',
+                                'code': 'BAD_INPUT'}), 400
             config['active_sports'] = data['active_sports']
 
         with open(GAME_ODDS_CONFIG_FILE, 'w') as f:
