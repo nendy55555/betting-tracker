@@ -95,7 +95,7 @@ function renderOpenBets() {
   if (!el) return;
 
   if (open.length === 0) {
-    el.innerHTML = '<div class="empty-state">No open bets yet.<br>Paste a bet slip or type a bet like:<br><code style="color:var(--blue)">Kansas +3.5 (-110) $50</code></div>';
+    el.innerHTML = '<div class="empty-state"><span class="es-icon">🎯</span><div class="es-title">No open bets</div><div class="es-sub">Paste a slip or type a bet:<br><code style="color:var(--blue)">Kansas +3.5 (-110) $50</code></div></div>';
     return;
   }
 
@@ -462,7 +462,7 @@ function renderSettledBets() {
   if (!el) return;
 
   if (settled.length === 0) {
-    el.innerHTML = '<div class="empty-state">No settled bets yet. Paste a Bovada or BetOnline slip to get started!</div>';
+    el.innerHTML = '<div class="empty-state"><span class="es-icon">📊</span><div class="es-title">No settled bets</div><div class="es-sub">Mark an open bet as Win, Loss, or Push<br>to start tracking your record.</div></div>';
     return;
   }
 
@@ -698,7 +698,7 @@ function renderFutures() {
   var el = document.getElementById('futuresList');
   if (!el) return;
   if (store.futures.length === 0) {
-    el.innerHTML = '<div class="empty-state">No futures bets yet. Use the chatbot with keywords like "future" to add one!</div>';
+    el.innerHTML = '<div class="empty-state"><span class="es-icon">🏆</span><div class="es-title">No futures tracked</div><div class="es-sub">Add one via the chatbot:<br><code style="color:var(--blue)">Celtics to win championship +800 $100</code></div></div>';
     return;
   }
   var staleMap = window.__btStaleFutures || {};
