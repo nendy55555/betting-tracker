@@ -593,7 +593,7 @@ function autoSyncIfInflated() {
           });
           runBetPipeline(toReEnrich2);
           addChat('system', '🔄 Auto-synced from Excel: ' + allBets.length + ' bets + ' + allFutures.length + ' futures (removed ' + (localSettled - settled.length) + ' stale entries). Your stats are now accurate.');
-        });
+        }).catch(function() {});
     })
     .catch(function() { /* server not running — no-op */ });
 }
