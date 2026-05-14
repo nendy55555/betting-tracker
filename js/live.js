@@ -276,7 +276,7 @@ function lookupOddsHistory(pick) {
     }
     var words = k.split(' ');
     for (var j = 0; j < words.length; j++) {
-      if (words[j].length > 4 && p.indexOf(words[j]) !== -1) {
+      if (words[j].length > 3 && p.indexOf(words[j]) !== -1) {
         if (k.length > bestLen) { best = cachedOddsHistory[k]; bestLen = k.length; }
         break;
       }
