@@ -116,6 +116,22 @@ a{color:var(--blue);text-decoration:none}
 .bet-card-details .game-time{font-size:var(--fs-sm);color:var(--amber);padding:4px 0}
 .bet-card-details .live-score{font-size:var(--fs-sm);color:var(--green);font-weight:600;padding:4px 0}
 .bet-card-details .actions{display:flex;gap:6px;margin-top:8px}
+/* Peer bets block */
+.peer-bets-block{margin:8px 0 4px;padding:8px 10px;background:rgba(91,142,247,.06);border:1px solid rgba(91,142,247,.18);border-radius:6px}
+.peer-bets-title{font-size:var(--fs-xs);font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--blue);margin-bottom:5px;opacity:.85}
+.peer-bet-row{display:flex;align-items:center;gap:8px;padding:2px 0;font-size:var(--fs-sm)}
+.peer-name{font-weight:700;color:var(--text);min-width:56px;flex-shrink:0}
+.peer-pick{color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.peer-stake{font-size:var(--fs-xs);color:var(--text3);flex-shrink:0;margin-left:auto}
+/* Sharp action block (Action Network) */
+.sharp-action-block{margin:8px 0 4px;padding:8px 10px;background:rgba(255,168,1,.05);border:1px solid rgba(255,168,1,.2);border-radius:6px}
+.sharp-action-title{font-size:var(--fs-xs);font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--amber);margin-bottom:6px;opacity:.9}
+.sharp-row{display:flex;align-items:center;gap:8px;padding:2px 0;font-size:var(--fs-sm)}
+.sharp-label{color:var(--text3);min-width:58px;flex-shrink:0;font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.4px}
+.sharp-val{color:var(--text2);flex:1;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.sharp-bar-wrap{display:inline-block;width:60px;height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;flex-shrink:0}
+.sharp-bar-fill{display:block;height:100%;background:var(--blue);border-radius:3px;transition:width .4s}
+.sharp-bar-fill.money{background:var(--amber)}
 .bet-card-details .actions button{flex:1;padding:6px;border:none;border-radius:5px;font-family:inherit;font-size:var(--fs-sm);font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.5px}
 .btn-win{background:rgba(0,208,132,.15);color:var(--green)}
 .btn-win:hover{background:rgba(0,208,132,.25)}
