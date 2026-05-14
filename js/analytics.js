@@ -558,5 +558,127 @@ function renderHighlights() {
   el.innerHTML = html;
 }
 
+/* ===== TEAM ANALYSIS ===== */
+
+function renderTeamAnalysis() {
+  var el = document.getElementById('teamAnalysisSection');
+  if (!el) return;
+
+  var settled = store.bets.filter(function(b) {
+    return b.settled && b.result && b.type !== 'parlay' && !isFutureBet(b);
+  });
+
+  if (settled.length === 0) { el.innerHTML = ''; return; }
+
+  /* Aggregate stats per team */
+  var teams = {}; /* teamName => { forW, forL, forP, forPL, againstW, againstL, againstP, againstPL } */
+
+  function ensureTeam(name) {
+    if (!name) return null;
+    var key = name.trim();
+    if (!key) return null;
+    if (!teams[key]) teams[key] = { forW:0, forL:0, forP:0, forPL:0, againstW:0, againstL:0, againstP:0, againstPL:0 };
+    return key;
+  }
+
+  for (var i = 0; i < settled.length; i++) {
+    var b = settled[i];
+    var pl = (parseFloat(b.toWin) || 0) - (parseFloat(b.stake) || 0);
+    if (b.result === 'W') pl = parseFloat(b.toWin) || 0;
+    else if (b.result === 'L') pl = -(parseFloat(b.stake) || 0);
+    else pl = 0; /* Push */
+
+    var forKey = ensureTeam(b.teamBetOn);
+    if (forKey) {
+      if (b.result === 'W') { teams[forKey].forW++; teams[forKey].forPL += pl; }
+      else if (b.result === 'L') { teams[forKey].forL++; teams[forKey].forPL += pl; }
+      else { teams[forKey].forP++; }
+    }
+
+    var againstKey = ensureTeam(b.opponent);
+    if (againstKey) {
+      if (b.result === 'W') { teams[againstKey].againstW++; teams[againstKey].againstPL += pl; }
+      else if (b.result === 'L') { teams[againstKey].againstL++; teams[againstKey].againstPL += pl; }
+      else { teams[againstKey].againstP++; }
+    }
+  }
+
+  var rows = Object.keys(teams).map(function(name) {
+    var t = teams[name];
+    var forTotal = t.forW + t.forL + t.forP;
+    var againstTotal = t.againstW + t.againstL + t.againstP;
+    var total = forTotal + againstTotal;
+    var forWinPct = forTotal > 0 ? (t.forW / forTotal * 100) : null;
+    var againstWinPct = againstTotal > 0 ? (t.againstW / againstTotal * 100) : null;
+    return { name: name, forW: t.forW, forL: t.forL, forP: t.forP, forTotal: forTotal,
+             forPL: t.forPL, forWinPct: forWinPct,
+             againstW: t.againstW, againstL: t.againstL, againstP: t.againstP,
+             againstTotal: againstTotal, againstPL: t.againstPL, againstWinPct: againstWinPct,
+             total: total };
+  });
+
+  /* Sort by total bets desc */
+  rows.sort(function(a, b) { return b.total - a.total; });
+
+  /* Only show teams with at least 1 bet */
+  rows = rows.filter(function(r) { return r.total > 0; });
+  if (rows.length === 0) { el.innerHTML = ''; return; }
+
+  function fmtRecord(w, l, p) {
+    return p > 0 ? (w + '-' + l + '-' + p) : (w + '-' + l);
+  }
+  function fmtPL(v) {
+    var s = (v >= 0 ? '+' : '') + '$' + Math.abs(v).toFixed(0);
+    return '<span style="color:' + (v > 0 ? 'var(--green)' : v < 0 ? 'var(--red)' : 'var(--text3)') + '">' + s + '</span>';
+  }
+  function fmtPct(v) {
+    if (v === null) return '<span style="color:var(--text3)">—</span>';
+    return '<span style="color:' + (v >= 55 ? 'var(--green)' : v < 45 ? 'var(--red)' : 'var(--text3)') + '">' + v.toFixed(0) + '%</span>';
+  }
+
+  var html = '<div class="analytics-card" style="overflow-x:auto">';
+  html += '<div class="chart-title" style="margin-bottom:12px">Team Performance Analysis</div>';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:.78rem">';
+  html += '<thead><tr style="border-bottom:1px solid var(--border)">';
+  html += '<th style="text-align:left;padding:6px 8px;color:var(--text3);font-weight:600">Team</th>';
+  html += '<th style="text-align:center;padding:6px 8px;color:var(--text3);font-weight:600" colspan="3">Bet FOR</th>';
+  html += '<th style="text-align:center;padding:6px 8px;color:var(--text3);font-weight:600" colspan="3">Bet AGAINST</th>';
+  html += '</tr>';
+  html += '<tr style="border-bottom:1px solid var(--border)">';
+  html += '<th style="padding:4px 8px"></th>';
+  html += '<th style="text-align:center;padding:4px 8px;color:var(--text3);font-size:.72rem">Record</th>';
+  html += '<th style="text-align:center;padding:4px 8px;color:var(--text3);font-size:.72rem">Win%</th>';
+  html += '<th style="text-align:center;padding:4px 8px;color:var(--text3);font-size:.72rem">P&amp;L</th>';
+  html += '<th style="text-align:center;padding:4px 8px;color:var(--text3);font-size:.72rem">Record</th>';
+  html += '<th style="text-align:center;padding:4px 8px;color:var(--text3);font-size:.72rem">Win%</th>';
+  html += '<th style="text-align:center;padding:4px 8px;color:var(--text3);font-size:.72rem">P&amp;L</th>';
+  html += '</tr></thead><tbody>';
+
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    var rowBg = i % 2 === 0 ? '' : 'background:rgba(255,255,255,.03)';
+    html += '<tr style="border-bottom:1px solid rgba(255,255,255,.04);' + rowBg + '">';
+    html += '<td style="padding:7px 8px;font-weight:600;white-space:nowrap">' + r.name + '</td>';
+    if (r.forTotal > 0) {
+      html += '<td style="text-align:center;padding:7px 8px">' + fmtRecord(r.forW, r.forL, r.forP) + '</td>';
+      html += '<td style="text-align:center;padding:7px 8px">' + fmtPct(r.forWinPct) + '</td>';
+      html += '<td style="text-align:center;padding:7px 8px">' + fmtPL(r.forPL) + '</td>';
+    } else {
+      html += '<td colspan="3" style="text-align:center;padding:7px 8px;color:var(--text3)">—</td>';
+    }
+    if (r.againstTotal > 0) {
+      html += '<td style="text-align:center;padding:7px 8px">' + fmtRecord(r.againstW, r.againstL, r.againstP) + '</td>';
+      html += '<td style="text-align:center;padding:7px 8px">' + fmtPct(r.againstWinPct) + '</td>';
+      html += '<td style="text-align:center;padding:7px 8px">' + fmtPL(r.againstPL) + '</td>';
+    } else {
+      html += '<td colspan="3" style="text-align:center;padding:7px 8px;color:var(--text3)">—</td>';
+    }
+    html += '</tr>';
+  }
+
+  html += '</tbody></table></div>';
+  el.innerHTML = html;
+}
+
 /* ===== LIVE SCORES ===== */
 

@@ -319,6 +319,28 @@ function enrichBetFromESPN(bet, callback) {
             bet.matchup = away.team.shortDisplayName + ' vs ' + home.team.shortDisplayName;
           }
 
+          /* Derive teamBetOn + opponent from ESPN competitors.
+             The picked team is the one matching bet.teamBetOn; the other is the opponent. */
+          var awayShort = away.team.shortDisplayName;
+          var homeShort = home.team.shortDisplayName;
+          var awayKey   = getEspnTeamKey(awayShort);
+          var homeKey   = getEspnTeamKey(homeShort);
+          if (bet.teamBetOn) {
+            var pickedKey = getEspnTeamKey(bet.teamBetOn);
+            var pickedIsAway = pickedKey && (awayKey.indexOf(pickedKey) !== -1 || pickedKey.indexOf(awayKey) !== -1);
+            if (pickedIsAway) {
+              if (!bet.opponent) bet.opponent = normalizeTeamName(homeShort);
+            } else {
+              if (!bet.opponent) bet.opponent = normalizeTeamName(awayShort);
+              /* Also update teamBetOn to the ESPN canonical short name */
+              if (!bet.opponent) bet.teamBetOn = normalizeTeamName(homeShort);
+            }
+          } else {
+            /* No teamBetOn yet — set away as default (bet slip convention: your team first) */
+            bet.teamBetOn = bet.teamBetOn || normalizeTeamName(awayShort);
+            bet.opponent  = bet.opponent  || normalizeTeamName(homeShort);
+          }
+
           /* Check if game is already completed */
           var statusType = (comp.status && comp.status.type) || {};
           if (statusType.completed || statusType.state === 'post') {

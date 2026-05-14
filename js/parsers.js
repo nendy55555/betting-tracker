@@ -776,16 +776,18 @@ function parseBovadaPaste(text) {
       var matchups = [];
       var mre = /(?:\(\d+\)\s+)?([A-Z][A-Za-z\s.'&-]+?)(?:\s*\(#?\d+\))?\s+@\s+(?:\(\d+\)\s+)?([A-Z][A-Za-z\s.'&-]+?)(?:\s*\(#?\d+\))?[\s\n]/g;
       var mm;
-      while ((mm = mre.exec(block)) !== null) { matchups.push(mm[1].trim() + ' vs ' + mm[2].trim()); }
+      while ((mm = mre.exec(block)) !== null) {
+        matchups.push(normalizeTeamName(mm[1].trim()) + ' vs ' + normalizeTeamName(mm[2].trim()));
+      }
       var vsm = block.match(/\*\s+([A-Z][A-Za-z\s.'&-]+?)\s+vs\s+([A-Za-z\s.'&-]+?)[\s\n]/i);
-      if (vsm && matchups.length === 0) matchups.push(vsm[1].trim() + ' vs ' + vsm[2].trim());
+      if (vsm && matchups.length === 0) matchups.push(normalizeTeamName(vsm[1].trim()) + ' vs ' + normalizeTeamName(vsm[2].trim()));
       /* Bovada "Sport Team A vs. Team B - Bet Type: Selection" format (no @ sign) */
       if (matchups.length === 0) {
         var vsBovRe = /^(?:(?:Basketball|Football|Baseball|Hockey|Soccer|Tennis|Boxing|MMA|Golf|Cricket|College)\s+)?([A-Z][A-Za-z\s.'&-]+?)\s+vs\.?\s+([A-Z][A-Za-z\s.'&-]+?)\s+-\s+(?:Money Line|Moneyline|Point Spread|Total(?:\s+Points)?|3-Way Moneyline|Spread)/i;
         var blLines = block.split('\n');
         for (var vbi = 0; vbi < blLines.length; vbi++) {
           var vbm = blLines[vbi].trim().match(vsBovRe);
-          if (vbm) { matchups.push(vbm[1].trim() + ' vs ' + vbm[2].trim()); break; }
+          if (vbm) { matchups.push(normalizeTeamName(vbm[1].trim()) + ' vs ' + normalizeTeamName(vbm[2].trim())); break; }
         }
       }
       var matchup = matchups.length > 0 ? matchups[0] : '';
