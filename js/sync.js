@@ -74,7 +74,7 @@ function renderBetLog() {
   if (countEl) countEl.textContent = rows.length + ' bet' + (rows.length === 1 ? '' : 's');
 
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="11" class="bl-empty">No bets match this filter.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" class="bl-empty">📭 No bets match this filter. <button onclick="setBetLogFilter(\'all\')" style="margin-left:8px;background:none;border:1px solid var(--border);color:var(--blue);border-radius:4px;padding:2px 8px;cursor:pointer;font-family:inherit;font-size:var(--fs-sm)">Clear filter</button></td></tr>';
     return;
   }
 

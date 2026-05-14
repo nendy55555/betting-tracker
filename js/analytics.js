@@ -356,7 +356,7 @@ function renderHighlights() {
   if (!el) return;
   var settled = store.bets.concat(store.futures).filter(function(b) { return b.settled && b.result; });
   if (settled.length === 0) {
-    el.innerHTML = '<div class="empty-state">No settled bets yet. Settle some bets to see your highlights.</div>';
+    el.innerHTML = '<div class="empty-state"><span class="es-icon">✨</span><div class="es-title">No highlights yet</div><div class="es-sub">Settle some bets to see your best wins,<br>streaks, and top picks here.</div></div>';
     return;
   }
 

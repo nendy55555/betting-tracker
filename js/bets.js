@@ -21,6 +21,17 @@ function settleBet(id, result) {
       break;
     }
   }
+  /* Flash the card before re-render so the user sees the outcome color */
+  var card = document.getElementById('card-' + id);
+  if (card) {
+    var flashClass = result === 'W' ? 'flash-win' : result === 'L' ? 'flash-loss' : 'flash-push';
+    card.classList.add(flashClass);
+    setTimeout(function() {
+      invalidateStats();
+      runBetPipeline(target ? [target] : []);
+    }, 480);
+    return;
+  }
   invalidateStats();
   runBetPipeline(target ? [target] : []); /* sort + ESPN enrichment if needed + save + render */
 }
