@@ -121,6 +121,8 @@ function renderOpenBets() {
     html += '<span class="bet-row">';
     html += '<span class="sport-tag ' + sc + '">' + escHtml(b.sport || '?') + '</span>';
     if (b.source) html += '<span class="source-tag">' + escHtml(b.source) + '</span>';
+    var consBadge = getOpenBetConsensusBadge(b);
+    if (consBadge) html += consBadge;
     html += '<span class="stake-short">' + fmtMoney(b.stake) + '</span>';
     html += '</span>';
     /* Use scheduledStart (ESPN ISO time) for accuracy; fall back to gameTime string */
@@ -157,6 +159,77 @@ function findLiveScore(bet) {
     if (searchStr.indexOf(keys[i].toLowerCase()) !== -1) return cachedLiveScores[keys[i]];
   }
   return null;
+}
+
+/* Match an open bet against consensusStore and return a badge chip, or '' if no data / neutral split.
+   Requires AN_SPORT_MAP / normAbbrAN / consensusStore / anTodayStr from live.js + upcoming.js. */
+function getOpenBetConsensusBadge(b) {
+  if (b.type === 'parlay') return '';
+  var anSport = AN_SPORT_MAP[b.sport];
+  if (!anSport) return '';
+  var ckey = anSport + ':' + anTodayStr();
+  var lookup = consensusStore[ckey];
+  if (!lookup || !Object.keys(lookup).length) return '';
+
+  /* Split matchup on "vs" to get away / home name strings */
+  var muStr = (b.espnMatchup || b.matchup || '').replace(/\s+@\s+/, ' vs ');
+  var vsParts = muStr.split(/\s+vs\.?\s+/i);
+  if (vsParts.length < 2) return '';
+
+  var awayStr = vsParts[0].trim();
+  var homeStr = vsParts[1].trim();
+  var awayWords = awayStr.split(/\s+/);
+  var homeWords = homeStr.split(/\s+/);
+
+  /* Build candidate tokens: last word of away (e.g. "Celtics"), first word of home (e.g. "Lakers"),
+     plus first word of away and last word of home as fallbacks for two-word city names */
+  var awayToks = [normAbbrAN(awayWords[awayWords.length - 1])];
+  if (awayWords.length > 1) awayToks.push(normAbbrAN(awayWords[0]));
+  var homeToks = [normAbbrAN(homeWords[0])];
+  if (homeWords.length > 1) homeToks.push(normAbbrAN(homeWords[homeWords.length - 1]));
+
+  /* Find the matching consensus entry (try all token combos, both orderings) */
+  var cs = null, awayAbbr, homeAbbr;
+  outer: for (var ai = 0; ai < awayToks.length; ai++) {
+    for (var hi = 0; hi < homeToks.length; hi++) {
+      var at = awayToks[ai], ht = homeToks[hi];
+      if (lookup[at + ':' + ht]) {
+        cs = lookup[at + ':' + ht]; awayAbbr = at; homeAbbr = ht; break outer;
+      }
+      if (lookup[ht + ':' + at]) {
+        cs = lookup[ht + ':' + at]; awayAbbr = ht; homeAbbr = at; break outer;
+      }
+    }
+  }
+  if (!cs || cs.awayMoney === null) return '';
+
+  /* Determine which side Thomas bet: try matching the first pick token as an abbreviation first,
+     then fall back to checking if the pick text starts with the team's first word */
+  var pickTok = normAbbrAN((b.pick || '').trim().split(/\s+/)[0]);
+  var betSide = null;
+  if (pickTok === awayAbbr) betSide = 'away';
+  else if (pickTok === homeAbbr) betSide = 'home';
+
+  if (!betSide) {
+    var pickLow = (b.pick || '').toLowerCase();
+    var awayFirst = awayStr.toLowerCase().split(/\s+/)[0];
+    var homeFirst = homeStr.toLowerCase().split(/\s+/)[0];
+    if (awayFirst.length > 2 && pickLow.indexOf(awayFirst) === 0) betSide = 'away';
+    else if (homeFirst.length > 2 && pickLow.indexOf(homeFirst) === 0) betSide = 'home';
+  }
+
+  if (!betSide) return '';
+
+  var money = betSide === 'away' ? cs.awayMoney : cs.homeMoney;
+  if (money === null) return '';
+
+  if (money <= 35) {
+    return '<span class="consensus-badge sharp-fade" title="' + money + '% of money on your side (' + (100 - money) + '% against) — sharp money fading you">⚡ Sharp</span>';
+  }
+  if (money >= 65) {
+    return '<span class="consensus-badge public-fade" title="' + money + '% of money on your side — popular/public play">👥 Public</span>';
+  }
+  return '';
 }
 
 /* ===== RENDER: SETTLED BETS (grouped by game) ===== */
