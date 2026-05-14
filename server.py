@@ -316,7 +316,10 @@ def read_settled_bets(user=DEFAULT_USER):
             })
         wb.close()
 
-        # Cache settled bets but DON'T update mtime yet — open bets still need reading
+        # Commit the mtime so a standalone /api/bets call doesn't re-read on every
+        # request. read_open_bets() snapshots current_mtime before calling us and
+        # overwrites cache['mtime'] at its end, so there is no double-update hazard.
+        cache['mtime']   = os.path.getmtime(path)
         cache['settled'] = bets
     except (FileNotFoundError, PermissionError):
         # Let the /api endpoint map these to XLSX_MISSING / XLSX_LOCKED.
