@@ -114,6 +114,9 @@ a{color:var(--blue);text-decoration:none}
 .result-badge.W{background:rgba(0,208,132,.2);color:var(--green)}
 .result-badge.L{background:rgba(255,71,87,.2);color:var(--red)}
 .result-badge.P{background:rgba(255,168,1,.2);color:var(--amber)}
+.consensus-badge{font-size:var(--fs-xs);font-weight:700;padding:2px 6px;border-radius:10px;flex-shrink:0;white-space:nowrap;cursor:default;letter-spacing:.3px}
+.consensus-badge.sharp-fade{background:rgba(255,184,51,.15);color:var(--amber)}
+.consensus-badge.public-fade{background:rgba(59,130,246,.12);color:#60a5fa}
 .bet-card-summary .chevron{color:var(--text3);font-size:var(--fs-sm);flex-shrink:0;transition:transform .2s}
 .bet-card.expanded .chevron{transform:rotate(180deg)}
 .bet-card-details{display:none;padding:0 12px 10px 12px;border-top:1px solid var(--border)}
