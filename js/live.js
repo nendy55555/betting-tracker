@@ -9,6 +9,7 @@ function fetchLiveScores(callback) {
     'https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/scoreboard',
     'https://site.api.espn.com/apis/site/v2/sports/soccer/usa.1/scoreboard'
   ];
+  var ENDPOINT_SPORT = ['NBA', 'NFL', 'NCAAMB', 'NCAAWB', 'Soccer'];
   var controller = new AbortController();
   var timeout = setTimeout(function(){ controller.abort(); }, 8000);
   Promise.all(endpoints.map(function(url){
@@ -48,7 +49,8 @@ function fetchLiveScores(callback) {
               homeAbbr: home.team.abbreviation,
               awayScore: parseInt(away.score, 10) || 0,
               homeScore: parseInt(home.score, 10) || 0,
-              status: statusDetail
+              status: statusDetail,
+              espnSport: ENDPOINT_SPORT[ri],
             };
 
             var names = [away.team.displayName, home.team.displayName, away.team.shortDisplayName, home.team.shortDisplayName, away.team.abbreviation, home.team.abbreviation];
@@ -115,6 +117,18 @@ function refreshAndSettle() {
 
 function findGameData(bet) {
   var searchStr = ((bet.matchup || '') + ' ' + (bet.pick || '')).toLowerCase();
+  /* Normalise the bet's sport string to the ESPN sport tag so we only match
+     games from the same sport. This prevents "Kansas" matching both the
+     Jayhawks (NCAAMB) and the Chiefs (NFL) when both are in espnGameData. */
+  var betSport = (function(s) {
+    s = (s || '').toUpperCase().trim();
+    if (s === 'NFL' || s === 'FOOTBALL') return 'NFL';
+    if (s === 'NBA' || s === 'BASKETBALL') return 'NBA';
+    if (s === 'NCAAMB' || s === 'CBB' || /COLLEGE.*BASKET/.test(s)) return 'NCAAMB';
+    if (s === 'NCAAWB' || /WOMEN.*BASKET/.test(s)) return 'NCAAWB';
+    if (s === 'MLS' || s === 'SOCCER') return 'Soccer';
+    return '';
+  })(bet.sport);
   var keys = Object.keys(espnGameData);
   /* Word-boundary match prevents false positives like "sa" (Spurs abbr)
      matching "arkansas". Also skip keys shorter than 4 chars — most 2/3-char
@@ -123,8 +137,10 @@ function findGameData(bet) {
   for (var i = 0; i < keys.length; i++) {
     var k = keys[i];
     if (!k || k.length < 4) continue;
+    var candidate = espnGameData[k];
+    if (betSport && candidate.espnSport && candidate.espnSport !== betSport) continue;
     var re = new RegExp('\\b' + escapeRe(k) + '\\b', 'i');
-    if (re.test(searchStr)) return espnGameData[k];
+    if (re.test(searchStr)) return candidate;
   }
   return null;
 }
