@@ -403,6 +403,36 @@ function extractTeamFromMatchup(matchup) {
   return normalizeTeamName(team) || normalizeTeamName(matchup);
 }
 
+/* Extract the opponent team from a "Team A vs/@ Team B" matchup.
+   Returns '' for single-team entries (opponent unknown until ESPN enrichment). */
+function extractOpponentFromMatchup(matchup) {
+  if (!matchup) return '';
+  var vsMatch = matchup.match(/^.+?\s+(?:vs\.?|@)\s+(.+)$/i);
+  if (!vsMatch) return '';
+  var opp = vsMatch[1].trim();
+  opp = opp.replace(/^(?:Basketball|Football|Baseball|Hockey|Soccer|Tennis|Boxing|MMA|Golf|Cricket|College)\s+/i, '').trim();
+  opp = opp.replace(/\s*\(#?\d+\)\s*/g, '').trim();
+  opp = opp.replace(/\s+(?:Commodores|Cornhuskers|Wolverines|Buckeyes|Gators|Crimson Tide|Blue Devils|Tar Heels|Wolfpack|Orange|Seminoles|Wildcats|Cyclones|Boilermakers|Hurricanes|Hawkeyes|Hoosiers|Bulldogs|Huskies|Jayhawks|Cardinals|Spartans|Cavaliers|Longhorns|Volunteers|Aggies|Rams|Tigers|Bears|Cougars|Razorbacks|Badgers|Gophers|Bruins|Ducks|Trojans|Flyers|Friars|Gaels|Shockers|Ramblers|Paladins|Terrapins|Terps|Zags|Pilots|Sooners|Mustangs|Eagles|Knights|Panthers|Owls|Flames|Beavers|Peacocks|Red Raiders|Horned Frogs|Anteaters|Utes|Mountaineers|Colonels|Cowboys|Pioneers|Governors|Bison|Monarchs|Braves|Buccaneers|Sharks|Dons|Terriers|Broncos)\s*$/i, '').trim();
+  return normalizeTeamName(opp);
+}
+
+/* Attempt to derive the opponent from an already-enriched espnMatchup string
+   ("Away vs Home") when we have teamBetOn but opponent is still empty. */
+function deriveOpponentFromEspnMatchup(bet) {
+  if (!bet.espnMatchup || !bet.teamBetOn || bet.opponent) return;
+  var parts = bet.espnMatchup.split(/\s+vs\.?\s+/i);
+  if (parts.length !== 2) return;
+  var k0 = getEspnTeamKey(parts[0]);
+  var k1 = getEspnTeamKey(parts[1]);
+  var picked = getEspnTeamKey(bet.teamBetOn);
+  if (!picked) return;
+  if (k0 && (k0 === picked || k0.indexOf(picked) !== -1 || picked.indexOf(k0) !== -1)) {
+    bet.opponent = normalizeTeamName(parts[1].trim());
+  } else if (k1 && (k1 === picked || k1.indexOf(picked) !== -1 || picked.indexOf(k1) !== -1)) {
+    bet.opponent = normalizeTeamName(parts[0].trim());
+  }
+}
+
 /* Build the clean pick label for the bet log: "Team spread-or-ML" with no odds.
    Keeps parlays as-is (just strips redundant "Parlay Parlay" and trailing odds). */
 function buildPickDisplay(b) {

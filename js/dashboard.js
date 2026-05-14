@@ -314,6 +314,36 @@ function runBetPipeline(newlyAddedBets) {
   if (hasNewOpen && typeof startLivePolling === 'function') startLivePolling();
 }
 
+/* ===== HISTORICAL OPPONENT ENRICHMENT =====
+   Runs once per session in the background, enriching settled straight bets
+   that have a teamBetOn but no opponent yet (old single-team entries). */
+function enrichHistoricalOpponents() {
+  var todo = store.bets.filter(function(b) {
+    return b.settled &&
+           b.teamBetOn &&
+           !b.opponent &&
+           !b.opponentLookupAttempted &&
+           b.type !== 'parlay' &&
+           !isFutureBet(b) &&
+           typeof isGenericPick === 'function' && !isGenericPick(b.pick);
+  });
+  if (todo.length === 0) return;
+
+  /* Mark all as attempted immediately so we never retry on the same session */
+  todo.forEach(function(b) { b.opponentLookupAttempted = true; });
+
+  /* Rate-limited enrichment — reuses the same ESPN pipeline used for open bets */
+  enrichNewBets(todo, function(enriched) {
+    if (enriched > 0) {
+      saveData();
+      /* Refresh the team analysis panel if analytics tab is active */
+      if (store.currentTab === 'analytics' && typeof renderTeamAnalysis === 'function') {
+        renderTeamAnalysis();
+      }
+    }
+  });
+}
+
 /* ===== TEAM EXTRACTION FOR GROUP LABELS =====
    Used by the "[Team] multiple" summary row when a game-group has >1 bet. */
 var _MASCOT_SINGLETON_RE = /^(?:Lakers|Celtics|Warriors|Nets|Knicks|Bucks|76ers|Sixers|Suns|Heat|Bulls|Mavericks|Mavs|Nuggets|Clippers|Hawks|Grizzlies|Cavaliers|Cavs|Timberwolves|Wolves|Pelicans|Raptors|Pacers|Kings|Magic|Wizards|Hornets|Blazers|Pistons|Rockets|Thunder|Spurs|Jazz|Chiefs|Eagles|Bills|Cowboys|49ers|Niners|Ravens|Bengals|Dolphins|Lions|Chargers|Jaguars|Jets|Bears|Packers|Vikings|Steelers|Rams|Seahawks|Commanders|Saints|Broncos|Texans|Falcons|Browns|Colts|Cardinals|Raiders|Titans|Giants|Panthers|Buccaneers|Bucs|Patriots)$/i;
@@ -1181,6 +1211,7 @@ function renderDeepAnalysis() {
   renderCLVTrendChart();
   renderEdgeModelChart();
   renderParlayCorrelation();
+  if (typeof renderTeamAnalysis === 'function') renderTeamAnalysis();
   renderDeepBreakdown();
 }
 

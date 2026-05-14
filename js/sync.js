@@ -180,7 +180,9 @@ function clearAllData() {
 
 /* ===== SERVER→TRACKER BET MAPPER (shared by syncFromExcel + autoSyncIfInflated) ===== */
 function mapServerBet(b) {
-  return {
+  var teamBetOn = b.teamBetOn || extractTeamFromMatchup(b.matchup || '');
+  var opponent  = b.opponent  || extractOpponentFromMatchup(b.matchup || '');
+  var mapped = {
     id:          b.id || b.txId || ('xl_' + Math.random().toString(36).slice(2)),
     txId:        b.txId || b.id || '',
     sport:       b.sport || 'Other',
@@ -188,6 +190,8 @@ function mapServerBet(b) {
     matchup:     b.matchup || '',
     line:        b.line    || '',
     pick:        b.pick   || b.matchup || '',
+    teamBetOn:   teamBetOn,
+    opponent:    opponent,
     odds:        b.odds   || 0,
     stake:       b.stake  || 0,
     toWin:       b.toWin  || 0,
@@ -201,6 +205,12 @@ function mapServerBet(b) {
     excelRow:    b.excelRow    || null,
     excelSheet:  b.excelSheet  || null,
   };
+  /* If espnMatchup is already present (carried via b), try to derive opponent */
+  if (b.espnMatchup && !opponent) {
+    mapped.espnMatchup = b.espnMatchup;
+    deriveOpponentFromEspnMatchup(mapped);
+  }
+  return mapped;
 }
 
 /* ===== SYNC FROM EXCEL (via local server) ===== */
@@ -267,10 +277,18 @@ function syncFromExcel() {
     var enrichFn = function(b) {
       var ex = existingByTxId[b.txId];
       if (ex) {
-        if (ex.espnMatchup)     b.espnMatchup     = ex.espnMatchup;
-        if (ex.espnScore)       b.espnScore       = ex.espnScore;
-        if (ex.scheduledStart)  b.scheduledStart  = ex.scheduledStart;
-        if (ex.expectedEndTime) b.expectedEndTime = ex.expectedEndTime;
+        if (ex.espnMatchup)              b.espnMatchup              = ex.espnMatchup;
+        if (ex.espnScore)                b.espnScore                = ex.espnScore;
+        if (ex.scheduledStart)           b.scheduledStart           = ex.scheduledStart;
+        if (ex.expectedEndTime)          b.expectedEndTime          = ex.expectedEndTime;
+        /* Preserve team-analysis fields enriched on the client */
+        if (ex.teamBetOn)                b.teamBetOn                = ex.teamBetOn;
+        if (ex.opponent)                 b.opponent                 = ex.opponent;
+        if (ex.opponentLookupAttempted)  b.opponentLookupAttempted  = ex.opponentLookupAttempted;
+      }
+      /* If we now have espnMatchup but still no opponent, derive it */
+      if (b.espnMatchup && b.teamBetOn && !b.opponent) {
+        deriveOpponentFromEspnMatchup(b);
       }
       return b;
     };
@@ -284,6 +302,8 @@ function syncFromExcel() {
       return !b.settled && !b.espnMatchup && b.type !== 'parlay' && !isGenericPick(b.pick);
     });
     runBetPipeline(toReEnrich);
+    /* Background: fill opponent for settled single-team bets via ESPN lookup */
+    setTimeout(enrichHistoricalOpponents, 2000);
 
     var msg = 'Synced from Excel: ' + allBets.length + ' bets + ' + allFutures.length + ' futures'
       + ' (was ' + prevCount + ' bets, ' + prevFutCount + ' futures).';
