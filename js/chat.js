@@ -78,7 +78,7 @@ function renderChat() {
 var claudeCache = {};
 /* claudeCacheVersion is declared in store.js */
 /* Separate context cache keyed by version — rebuilt only when bets change, not per question */
-var _ctxCache = { version: -1, text: '' };
+var _ctxCache = { version: -1, scope: '', text: '' };
 
 /* FNV-1a 32-bit hash — deterministic, fast, no deps. Used for cache keys. */
 function _bt_hash(str) {
@@ -135,13 +135,43 @@ function _bt_budgetIncrement() {
   try { localStorage.setItem(BT_CLAUDE_BUDGET_KEY, JSON.stringify({ date: s.date, count: s.count })); } catch (e) {}
 }
 
-function buildBetContext() {
-  /* Return cached context if nothing has changed since last build */
-  if (_ctxCache.version === claudeCacheVersion) return _ctxCache.text;
+function buildBetContext(userMessage) {
+  /* Detect explicit scope in the user's question (year/sport) so Claude gets the
+   * right data — e.g., "how did I do on NFL in 2024?" should NOT see all-time data.
+   * If no scope is detected, fall back to the dashboard's chartFilter (cached). */
+  var msg = (userMessage || '').toLowerCase();
+  var qYear = null;
+  var ym = msg.match(/\b(20\d{2})\b/);
+  if (ym) qYear = parseInt(ym[1], 10);
+  var qSport = null;
+  if (/\bnba\b/.test(msg)) qSport = 'NBA';
+  else if (/\bnfl\b/.test(msg)) qSport = 'NFL';
+  else if (/\bncaa\b|\bcollege\b|\bcbb\b|\bmarch madness\b/.test(msg)) qSport = 'NCAAMB';
+  else if (/\bsoccer\b|\bmls\b/.test(msg)) qSport = 'Soccer';
 
-  /* Use already-computed filtered data — avoids re-scanning store */
-  var settled = getCachedFiltered().filteredSettled;
-  var open    = getCachedFiltered().filteredOpenBets;
+  /* Cache key includes scope so different scoped questions don't collide */
+  var scopeKey = (qYear || 'all') + ':' + (qSport || 'all');
+  if (_ctxCache.version === claudeCacheVersion && _ctxCache.scope === scopeKey) return _ctxCache.text;
+
+  var settled, open;
+  if (qYear || qSport) {
+    /* Build a scope-specific view directly from the store, ignoring chartFilter */
+    var pool = store.bets.concat(store.futures);
+    if (qSport) pool = pool.filter(function(b) { return b.sport === qSport; });
+    if (qYear) {
+      pool = pool.filter(function(b) {
+        var ts = (b.gameTime ? parseGameDate(b.gameTime) : 0)
+               || (b.settledDate ? new Date(b.settledDate).getTime() : 0)
+               || (b.addedDate ? new Date(b.addedDate).getTime() : 0);
+        return ts > 0 && new Date(ts).getFullYear() === qYear;
+      });
+    }
+    settled = pool.filter(function(b) { return b.settled && b.result; });
+    open    = pool.filter(function(b) { return !b.settled; });
+  } else {
+    settled = getCachedFiltered().filteredSettled;
+    open    = getCachedFiltered().filteredOpenBets;
+  }
 
   /* Overall stats */
   var w = 0, l = 0, p = 0, staked = 0, returned = 0;
@@ -214,7 +244,13 @@ function buildBetContext() {
     openParts.push((o.pick || '?') + ' $' + (o.stake || 0).toFixed(0) + (o.gameTime ? ' ' + o.gameTime.replace(/\s+\d+:\d+.*/, '') : ''));
   }
 
-  var ctx = new Date().toLocaleDateString() + ' | ' + w + '-' + l + (p ? '-' + p : '') + ' | P/L ' + (pl >= 0 ? '+' : '') + '$' + pl.toFixed(2) + ' | ROI ' + roi.toFixed(1) + '% | Staked $' + staked.toFixed(0) + '\n';
+  var scopeLabel = '';
+  if (qSport && qYear) scopeLabel = qSport + ' ' + qYear;
+  else if (qSport) scopeLabel = qSport + ' all-time';
+  else if (qYear) scopeLabel = 'All sports ' + qYear;
+  else scopeLabel = 'Dashboard filter';
+  var ctx = 'Scope: ' + scopeLabel + ' | Date: ' + new Date().toLocaleDateString() + '\n';
+  ctx += 'Record ' + w + '-' + l + (p ? '-' + p : '') + ' | P/L ' + (pl >= 0 ? '+' : '') + '$' + pl.toFixed(2) + ' | ROI ' + roi.toFixed(1) + '% | Staked $' + staked.toFixed(0) + '\n';
   if (streakN > 1) ctx += 'Streak: ' + streakN + (streakResult === 'W' ? 'W' : streakResult === 'L' ? 'L' : 'P') + '\n';
   ctx += 'Open ' + open.length + ' | Settled ' + settled.length + ' | Futures ' + store.futures.length + '\n';
   ctx += 'Sport: ' + sportParts.join(' | ') + '\n';
@@ -223,12 +259,13 @@ function buildBetContext() {
   if (openParts.length) ctx += 'Pending: ' + openParts.join(' / ') + '\n';
 
   _ctxCache.version = claudeCacheVersion;
+  _ctxCache.scope   = scopeKey;
   _ctxCache.text    = ctx;
   return ctx;
 }
 
 function askClaude(userMessage, callback) {
-  var betContext  = buildBetContext();
+  var betContext  = buildBetContext(userMessage);
   var ctxHash     = _bt_hash(betContext);
   var promptHash  = _bt_hash(userMessage.toLowerCase().trim());
   var cacheKey    = promptHash + '.' + ctxHash;
@@ -256,7 +293,7 @@ function askClaude(userMessage, callback) {
   }
 
   /* Compact system prompt — ~160 chars vs the old ~450. Same instructions, less token burn. */
-  var systemPrompt = 'Betting analyst in a chat widget. Use the data below. Be concise (<150 words), data-driven, HTML only (<strong>,<br>,<span style="color:var(--green/--red)">). No markdown.\n\n' + betContext;
+  var systemPrompt = 'Betting analyst in a chat widget. Use ONLY the data below — do NOT invent stats for time periods or sports outside the Scope line. If the user asks about a scope not present in the data, say so. Be concise (<150 words), data-driven, HTML only (<strong>,<br>,<span style="color:var(--green/--red)">). No markdown.\n\n' + betContext;
 
   var body = JSON.stringify({
     model: BT_CLAUDE_MODEL,
@@ -434,8 +471,15 @@ function _processMessage(text) {
        analyzeQuery answer offline for free. See docs/agent/AUDIT.md "Claude call-site classification". */
     var convoResponse = handleConversation(text);
     if (convoResponse) { addChat('system', convoResponse); return; }
-    var analysisResult = analyzeQuery(text);
-    if (analysisResult) { addChat('analysis', analysisResult); return; }
+    /* If the question has an explicit year scope (e.g. "NFL in 2024") and the
+     * user has an API key, send it straight to Claude — the local handler's
+     * year filter is narrower and the user prefers richer Claude responses
+     * for scoped analytical questions. ~$0.002/query on Haiku 4.5. */
+    var hasYear = /\b20\d{2}\b/.test(text);
+    if (!(hasYear && store.claudeApiKey)) {
+      var analysisResult = analyzeQuery(text);
+      if (analysisResult) { addChat('analysis', analysisResult); return; }
+    }
 
     /* ===== CLAUDE FALLBACK (only if local can't answer and user has a key) ===== */
     if (store.claudeApiKey) {
