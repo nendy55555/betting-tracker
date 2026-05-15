@@ -1,6 +1,19 @@
 /* Bet management: confirm, settle, delete, card interactions */
 /* Extracted from betting-tracker.html — do not edit the original */
 
+function reopenFuture(id) {
+  for (var i = 0; i < store.futures.length; i++) {
+    if (store.futures[i].id === id) {
+      store.futures[i].settled = false;
+      store.futures[i].result = null;
+      store.futures[i].settledDate = null;
+      break;
+    }
+  }
+  invalidateStats();
+  runBetPipeline([]);
+}
+
 function resettleBet(id, result) {
   var all = store.bets.concat(store.futures);
   for (var i = 0; i < all.length; i++) {

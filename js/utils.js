@@ -378,7 +378,8 @@ function shortenMatchupDisplay(matchup) {
     t = t.replace(/\s*\(#?\d+\)\s*/g, '').trim();
     /* Strip Bovada sport category prefix: "Basketball Duke Blue Devils" → "Duke Blue Devils" */
     t = t.replace(/^(?:Basketball|Football|Baseball|Hockey|Soccer|Tennis|Boxing|MMA|Golf|Cricket|College)\s+/i, '').trim();
-    return t.replace(MASCOTS, '').trim();
+    t = t.replace(MASCOTS, '').trim();
+    return stripCityPrefix(t);
   }).join(sep);
 }
 
@@ -419,6 +420,23 @@ function extractOpponentFromMatchup(matchup) {
   opp = opp.replace(/\s*\(#?\d+\)\s*/g, '').trim();
   opp = opp.replace(/\s+(?:Commodores|Cornhuskers|Wolverines|Buckeyes|Gators|Crimson Tide|Blue Devils|Tar Heels|Wolfpack|Orange|Seminoles|Wildcats|Cyclones|Boilermakers|Hurricanes|Hawkeyes|Hoosiers|Bulldogs|Huskies|Jayhawks|Cardinals|Spartans|Cavaliers|Longhorns|Volunteers|Aggies|Rams|Tigers|Bears|Cougars|Razorbacks|Badgers|Gophers|Bruins|Ducks|Trojans|Flyers|Friars|Gaels|Shockers|Ramblers|Paladins|Terrapins|Terps|Zags|Pilots|Sooners|Mustangs|Eagles|Knights|Panthers|Owls|Flames|Beavers|Peacocks|Red Raiders|Horned Frogs|Anteaters|Utes|Mountaineers|Colonels|Cowboys|Pioneers|Governors|Bison|Monarchs|Braves|Buccaneers|Sharks|Dons|Terriers|Broncos)\s*$/i, '').trim();
   return normalizeTeamName(opp);
+}
+
+/* Strip city/region prefix from a pro team name for compact card display.
+   "Houston Rockets" → "Rockets", "Los Angeles Lakers" → "Lakers",
+   "Portland Trail Blazers" → "Trail Blazers". Leaves single-word names intact. */
+var _CITY_PREFIX_RE = /^(?:Golden State|Oklahoma City|Los Angeles|San Francisco|San Antonio|New Orleans|New England|Kansas City|New Jersey|Las Vegas|Tampa Bay|New York|Green Bay|San Diego|San Jose|St\.?\s*Louis|Salt Lake|Charlotte|Cleveland|Columbus|Colorado|Edmonton|Montreal|Nashville|Winnipeg|Portland|Brooklyn|Carolina|Houston|Toronto|Orlando|Memphis|Indiana|Detroit|Chicago|Atlanta|Buffalo|Seattle|Phoenix|Florida|Arizona|Denver|Boston|Dallas|Miami|Utah|Washington|Minnesota|Milwaukee|Sacramento|Philadelphia|Cincinnati|Pittsburgh|Baltimore|Tennessee|Indianapolis|Jacksonville|Calgary|Vancouver|Anaheim|Ottawa|Virginia|Oakland|Vegas)\s+/i;
+function stripCityPrefix(name) {
+  if (!name) return name;
+  var stripped = name.replace(_CITY_PREFIX_RE, '').trim();
+  return stripped || name;
+}
+
+/* Shorten a pick line for compact card display by stripping city prefixes.
+   "Houston Rockets -3.5" → "Rockets -3.5". Totals ("Over 220.5") are unchanged. */
+function shortenPickLine(pick) {
+  if (!pick || /^(?:over|under|o|u)\s+\d/i.test(pick)) return pick;
+  return stripCityPrefix(pick);
 }
 
 /* Attempt to derive the opponent from an already-enriched espnMatchup string

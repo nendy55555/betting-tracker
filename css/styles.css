@@ -136,7 +136,7 @@ a{color:var(--blue);text-decoration:none}
 /* Compact bet cards with expand/collapse */
 .bet-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;transition:border-color .15s,box-shadow .15s;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.3)}
 .bet-card:hover{border-color:rgba(91,142,247,.3);box-shadow:0 2px 8px rgba(0,0,0,.4)}
-.bet-card-summary{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:10px 12px;cursor:pointer;user-select:none}
+.bet-card-summary{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;padding:8px 12px;cursor:pointer;user-select:none}
 .bet-card-summary .sport-tag{font-size:var(--fs-sm);text-transform:uppercase;font-weight:700;letter-spacing:.7px;padding:2px 7px;border-radius:3px;flex-shrink:0;white-space:nowrap}
 .bet-card-summary .game-time-row{width:100%;font-size:var(--fs-sm);color:var(--amber);margin-top:-2px;padding-left:2px}
 .sport-tag.nba{background:rgba(255,156,51,.15);color:var(--sport-nba)}
@@ -148,7 +148,7 @@ a{color:var(--blue);text-decoration:none}
 .sport-tag.soccer,.sport-tag.mls{background:rgba(0,208,132,.15);color:var(--green)}
 .sport-tag.other{background:rgba(143,163,180,.15);color:var(--text2)}
 .source-tag{font-size:var(--fs-xs);text-transform:uppercase;font-weight:600;letter-spacing:.5px;padding:2px 6px;border-radius:3px;flex-shrink:0;white-space:nowrap;background:rgba(136,153,166,.12);color:var(--text2)}
-.bet-card-summary .matchup-line{font-weight:700;font-size:var(--fs-sm);color:var(--text);width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bet-card-summary .matchup-line{font-weight:600;font-size:var(--fs-xs);color:var(--text);width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bet-card-summary .bet-row{display:flex;align-items:center;gap:8px;width:100%}
 .bet-card-summary .pick-short{font-weight:600;font-size:var(--fs-sm);color:var(--blue);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bet-card-summary .odds-short{font-size:var(--fs-sm);color:var(--text2);font-weight:600;flex-shrink:0}
@@ -248,7 +248,7 @@ a{color:var(--blue);text-decoration:none}
 .filter-btn:hover,.fbtn:hover,.bl-filter-btn:hover{border-color:var(--text2);color:var(--text)}
 .filter-btn.active,.fbtn.active,.bl-filter-btn.active{border-color:var(--green);color:var(--green);background:rgba(0,208,132,.08)}
 
-.futures-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.futures-grid{display:block}
 .future-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;position:relative;box-shadow:var(--shadow);transition:box-shadow .15s,transform .15s}
 .future-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px)}
 .future-card.stale{border-color:rgba(255,68,85,0.6);box-shadow:0 0 0 1px rgba(255,68,85,0.25), var(--shadow)}
@@ -257,7 +257,7 @@ a{color:var(--blue);text-decoration:none}
 .future-card.stale .stale-banner{display:flex;align-items:center;gap:6px;background:linear-gradient(90deg,rgba(255,68,85,0.18),rgba(255,68,85,0.05));color:var(--red);font-weight:700;font-size:var(--fs-sm);letter-spacing:.04em;text-transform:uppercase;padding:6px 10px;border-radius:5px;margin:-4px -4px 10px;border:1px solid rgba(255,68,85,0.35)}
 .future-card.stale .stale-banner .stale-ended{color:#ff8c99;font-weight:500;text-transform:none;letter-spacing:0;margin-left:auto}
 .future-card .sport-tag{font-size:var(--fs-xs);text-transform:uppercase;font-weight:700;letter-spacing:.8px;padding:2px 8px;border-radius:4px;display:inline-block;margin-bottom:8px}
-.future-card .pick{font-weight:700;font-size:var(--fs-md);margin-bottom:4px;padding-right:80px}
+.future-card .pick{font-weight:700;font-size:var(--fs-md);margin-bottom:4px;padding-right:90px}
 .future-card .odds{color:var(--blue);font-weight:700;margin-bottom:4px}
 .future-card .odds-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
 .future-card .odds-row .your-odds{color:var(--text2);font-size:var(--fs-base)}
@@ -269,20 +269,6 @@ a{color:var(--blue);text-decoration:none}
 .future-card .meta{font-size:var(--fs-sm);color:var(--text2)}
 .future-card .actions{display:flex;gap:6px;margin-top:10px}
 .future-card .actions button{flex:1;padding:6px;border:none;border-radius:5px;font-family:inherit;font-size:var(--fs-sm);font-weight:700;cursor:pointer;text-transform:uppercase}
-/* Odds badge — top-right corner of each futures card */
-.live-odds-badge{position:absolute;top:12px;right:12px;text-align:right;min-width:64px}
-.live-odds-badge .fc-badge-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.6px;font-weight:600;color:var(--text3);line-height:1}
-.live-odds-badge .fc-placed-val{font-size:var(--fs-lg);font-weight:800;color:var(--text);line-height:1.15}
-.live-odds-badge .fc-cur-val{font-size:var(--fs-base);font-weight:700;line-height:1.2}
-.live-odds-badge .fc-cur-val.favorable{color:var(--green)}
-.live-odds-badge .fc-cur-val.unfavorable{color:var(--red)}
-.live-odds-badge .fc-cur-val.neutral{color:var(--blue)}
-.live-odds-badge .live-src{font-size:var(--fs-xs);color:var(--text3);margin-top:1px}
-/* Logo + sport-tag row */
-.future-card .fc-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.future-card .fc-logo-wrap{width:36px;height:36px;flex-shrink:0;border-radius:6px;overflow:hidden;background:var(--surface2);display:flex;align-items:center;justify-content:center}
-.future-card .fc-logo-img{width:32px;height:32px;object-fit:contain}
-.future-card .fc-logo-initials{width:36px;height:36px;border-radius:6px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:var(--fs-xs);font-weight:800;color:var(--text2);text-align:center;line-height:1}
 .line-movement{margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
 .line-movement .lm-label{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.6px;color:var(--text3);font-weight:600;margin-bottom:4px}
 .line-movement .lm-sparkline{display:flex;align-items:flex-end;gap:2px;height:28px}
@@ -298,6 +284,55 @@ a{color:var(--blue);text-decoration:none}
 .line-movement .lm-entry.up{color:var(--red)}
 .line-movement .lm-entry.down{color:var(--green)}
 .future-card .odds-source{font-size:var(--fs-xs);color:var(--text3);margin-top:2px}
+
+/* ===== FUTURES V2 — grouped by championship ===== */
+.futures-group{margin-bottom:20px}
+.futures-group-header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--text3);border-radius:var(--radius) var(--radius) 0 0}
+.futures-group-title{font-weight:700;font-size:var(--fs-base);color:var(--text);flex:1;min-width:0}
+.futures-group-count{font-size:var(--fs-xs);background:var(--amber);color:var(--bg);padding:2px 8px;border-radius:10px;font-weight:700;letter-spacing:.04em;flex-shrink:0}
+.futures-group-exposure{font-size:var(--fs-sm);color:var(--text3);flex-shrink:0}
+.future-card-v2{display:flex;align-items:center;gap:14px;background:var(--surface2);border:1px solid var(--border);border-top:none;padding:14px 16px;position:relative;transition:background .15s;min-width:0}
+.futures-group .future-card-v2:last-child{border-radius:0 0 var(--radius) var(--radius)}
+.future-card-v2:hover{background:rgba(255,255,255,.025)}
+.future-card-v2.stale{border-left:2px solid rgba(255,68,85,.5)}
+.future-card-v2.settled{opacity:.55;transition:opacity .15s}
+.future-card-v2.settled:hover{opacity:1}
+.fc-logo-wrap{flex-shrink:0;position:relative;width:52px;height:52px}
+.fc-logo,.fc-initials{width:52px;height:52px;border-radius:50%;border:2px solid var(--border);background:var(--surface)}
+.fc-logo{object-fit:contain;display:block}
+.fc-initials{display:flex;align-items:center;justify-content:center;font-weight:800;font-size:var(--fs-sm);letter-spacing:.5px}
+.fc-stale-dot{position:absolute;bottom:1px;right:1px;width:10px;height:10px;border-radius:50%;background:var(--red);border:2px solid var(--surface2)}
+.fc-body{flex:1;min-width:0}
+.fc-odds{font-size:var(--fs-xl);font-weight:800;letter-spacing:-.5px;line-height:1;margin-bottom:4px}
+.fc-odds.positive{color:var(--blue)}
+.fc-odds.negative{color:var(--text)}
+.fc-meta{font-size:var(--fs-sm);color:var(--text2)}
+.fc-stale-badge{display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-xs);color:var(--red);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-top:4px}
+.fc-result-badge{display:inline-flex;align-items:center;font-size:var(--fs-sm);font-weight:700;padding:2px 8px;border-radius:4px;margin-top:4px}
+.fc-result-badge.W{background:rgba(0,208,132,.2);color:var(--green)}
+.fc-result-badge.L{background:rgba(255,71,87,.2);color:var(--red)}
+.fc-result-badge.P{background:rgba(255,168,1,.2);color:var(--amber)}
+.fc-live{text-align:right;flex-shrink:0;min-width:56px}
+.fc-live-val{font-size:var(--fs-base);font-weight:700}
+.fc-live-val.favorable{color:var(--green)}
+.fc-live-val.unfavorable{color:var(--red)}
+.fc-live-val.neutral{color:var(--blue)}
+.fc-live-move{font-size:var(--fs-xs);font-weight:700;padding:1px 5px;border-radius:3px;margin-top:2px;display:inline-block}
+.fc-live-move.favorable{background:rgba(0,208,132,.15);color:var(--green)}
+.fc-live-move.unfavorable{background:rgba(255,71,87,.15);color:var(--red)}
+.fc-live-src{font-size:var(--fs-xs);color:var(--text3);margin-top:1px}
+.fc-actions{display:flex;flex-direction:column;gap:5px;flex-shrink:0}
+.fc-actions button{padding:5px 13px;font-size:var(--fs-xs);font-weight:700;border:none;border-radius:5px;cursor:pointer;letter-spacing:.04em;font-family:inherit;white-space:nowrap;transition:all .12s}
+.settled-futures-toggle{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;margin-top:12px;font-size:var(--fs-sm);color:var(--text2);font-weight:600;transition:all .15s;user-select:none}
+.settled-futures-toggle:hover{color:var(--text);border-color:rgba(255,255,255,.1)}
+.sft-label{flex:1}
+.sft-count{font-size:var(--fs-xs);background:rgba(136,153,166,.15);color:var(--text2);padding:2px 8px;border-radius:10px;font-weight:700}
+.sft-record{font-size:var(--fs-xs);color:var(--text3)}
+.sft-chevron{color:var(--text3);font-size:var(--fs-sm);transition:transform .2s}
+.settled-futures-toggle.open .sft-chevron{transform:rotate(180deg)}
+.settled-futures-body{display:none;margin-top:8px}
+.settled-futures-body.open{display:block}
+@media(max-width:640px){.future-card-v2{flex-wrap:wrap;gap:10px}.fc-logo-wrap{width:42px;height:42px}.fc-logo,.fc-initials{width:42px;height:42px}.fc-odds{font-size:var(--fs-lg)}.fc-actions{flex-direction:row;width:100%}.fc-actions button{flex:1}}
 
 .grp-toggle{padding:4px 12px;cursor:pointer;font-size:var(--fs-sm);color:var(--text3);background:var(--surface2);display:flex;align-items:center;gap:5px;border-bottom:1px solid var(--border);user-select:none;transition:color .15s}
 .grp-toggle:hover{color:var(--text2)}
@@ -482,7 +517,7 @@ a{color:var(--blue);text-decoration:none}
   .stat-card .value{font-size:var(--fs-lg)}
   .bet-card-summary{padding:8px 10px}
   .future-card{padding:12px}
-  .future-card .pick{font-size:var(--fs-md);padding-right:72px}
+  .future-card .pick{font-size:var(--fs-md);padding-right:80px}
   .filter-btn,.fbtn,.tp-btn,.bl-filter-btn{padding:10px 12px!important;font-size:var(--fs-sm);min-height:44px}
   .refresh-btn,.settings-btn{padding:10px 12px;min-height:44px}
   .btn-win,.btn-loss,.btn-push,.btn-void,.btn-edit,.btn-slip{padding:10px 8px!important;font-size:var(--fs-sm)!important;min-height:44px}
