@@ -35,6 +35,11 @@ function analyzeQuery(query) {
   else if (/\bncaa\b|\bcollege\b|\bcbb\b|\bmarch madness\b/.test(q)) filterSport = 'NCAAMB';
   else if (/\bsoccer\b|\bmls\b|\bfootball\b/.test(q)) filterSport = 'Soccer';
 
+  /* Extract year filter — matches "in 2024", "2024 season", "during 2024", bare "2024" etc. */
+  var filterYear = null;
+  var yearMatch = q.match(/\b(20\d{2})\b/);
+  if (yearMatch) filterYear = parseInt(yearMatch[1], 10);
+
   /* Filter bets */
   var filtered = all;
   if (filterTeam) {
@@ -45,6 +50,14 @@ function analyzeQuery(query) {
   }
   if (filterSport) {
     filtered = filtered.filter(function(b) { return b.sport === filterSport; });
+  }
+  if (filterYear) {
+    filtered = filtered.filter(function(b) {
+      var ts = (b.gameTime ? parseGameDate(b.gameTime) : 0)
+             || (b.settledDate ? new Date(b.settledDate).getTime() : 0)
+             || (b.addedDate ? new Date(b.addedDate).getTime() : 0);
+      return ts > 0 && new Date(ts).getFullYear() === filterYear;
+    });
   }
 
   var settled = filtered.filter(function(b) { return b.settled && b.result; });
@@ -120,6 +133,7 @@ function analyzeQuery(query) {
 
   /* Determine what type of answer to give */
   var label = filterTeam ? ('<strong>' + escHtml(filterTeam.charAt(0).toUpperCase() + filterTeam.slice(1)) + '</strong>') : (filterSport ? '<strong>' + filterSport + '</strong>' : '<strong>all bets</strong>');
+  if (filterYear) label += ' <strong>' + filterYear + '</strong>';
 
   if (filtered.length === 0) {
     return 'No bets found matching ' + label + '. Try a different team or sport name.';
