@@ -880,6 +880,137 @@ function lookupCurrentOdds(pick) {
   return best;
 }
 
+/* ── Futures V2 helpers ───────────────────────────────────────────────── */
+function getSportColor(sport) {
+  var m = { 'NBA':'#ff9c33','NFL':'#5b9eff','NCAAMB':'#c9a0fc','NCAAWB':'#f7a8c2','MLB':'#ff7a59','NHL':'#7dd3fc','Soccer':'#00d084','MLS':'#00d084' };
+  return m[sport] || '#7a8f9e';
+}
+function getSportBg(sport) {
+  var m = { 'NBA':'rgba(255,156,51,0.12)','NFL':'rgba(91,158,255,0.12)','NCAAMB':'rgba(201,160,252,0.12)','NCAAWB':'rgba(247,168,194,0.12)','MLB':'rgba(255,122,89,0.12)','NHL':'rgba(125,211,252,0.12)','Soccer':'rgba(0,208,132,0.12)','MLS':'rgba(0,208,132,0.12)' };
+  return m[sport] || 'rgba(143,163,180,0.12)';
+}
+function getChampionshipGroup(b) {
+  var t = ((b.pick || '') + ' ' + (b.matchup || '')).toLowerCase();
+  if (/nba.*champion|nba.*title|nba.*finals|nba.*winner/.test(t)) return 'NBA Championship';
+  if (/super bowl|nfl.*champion|nfl.*title/.test(t)) return 'Super Bowl';
+  if (/stanley cup|nhl.*champion/.test(t)) return 'Stanley Cup';
+  if (/world series|mlb.*champion/.test(t)) return 'World Series';
+  if (/ncaa.*men|men.*ncaa|ncaab|college basketball.*champion/.test(t)) return "NCAA Men's Basketball";
+  if (/ncaa.*women|ncaaw/.test(t)) return "NCAA Women's Basketball";
+  if (/champions league|ucl/.test(t)) return 'UEFA Champions League';
+  if (/premier league|epl.*title|english.*title/.test(t)) return 'Premier League';
+  if (/world cup/.test(t)) return 'World Cup';
+  if (/la liga/.test(t)) return 'La Liga';
+  if (/bundesliga/.test(t)) return 'Bundesliga';
+  if (/serie a/.test(t)) return 'Serie A';
+  if (/\bmvp\b/.test(t)) return 'MVP Award';
+  if (/rookie of the year|\broy\b/.test(t)) return 'Rookie of the Year';
+  if (/defensive player|\bdpoy\b/.test(t)) return 'Defensive POY';
+  return (b.sport || 'Other') + ' Futures';
+}
+function extractTeamFromPick(pick, matchup) {
+  var text = String(pick || matchup || '');
+  /* "San Antonio Spurs — NBA Championship..." */
+  var m = text.match(/^([A-Z][A-Za-z\s.'&-]+?)\s*(?:—|–|--|to win\b|to be |championship|winner)/i);
+  if (m) return m[1].trim();
+  /* "Celtics +1000" — team before odds */
+  m = text.match(/^([A-Z][A-Za-z\s.'&-]{2,30}?)\s*[+-]\d{3}/);
+  if (m) return m[1].trim();
+  /* matchup as team (no "vs") */
+  if (matchup && !/\bvs\b/i.test(matchup)) return String(matchup).trim();
+  return text.replace(/\s*[+-]\d+.*$/, '').trim().slice(0, 30);
+}
+function renderFutureCardV2(b, staleMap, isSettled) {
+  var staleInfo = staleMap[String(b.id || '')] || staleMap[String(b.txId || '')] || null;
+  var team = extractTeamFromPick(b.pick, b.matchup);
+  var logoUrl = (typeof BT_teamLogo === 'function') ? BT_teamLogo(team, b.sport) : null;
+  var initials = (typeof BT_teamInitials === 'function') ? BT_teamInitials(team) : (team || '?').slice(0, 2).toUpperCase();
+  var sc = getSportColor(b.sport);
+  var sb = getSportBg(b.sport);
+  var settled = isSettled || !!b.settled;
+  var cardClass = 'future-card-v2' + (staleInfo && !settled ? ' stale' : '') + (settled ? ' settled' : '');
+  var h = '<div class="' + cardClass + '">';
+  /* Logo */
+  h += '<div class="fc-logo-wrap">';
+  if (logoUrl) {
+    h += '<img class="fc-logo" src="' + escHtml(logoUrl) + '" style="border-color:' + sc + '" ' +
+         'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'" />';
+    h += '<div class="fc-initials" style="display:none;border-color:' + sc + ';color:' + sc + ';background:' + sb + '">' + escHtml(initials) + '</div>';
+  } else {
+    h += '<div class="fc-initials" style="border-color:' + sc + ';color:' + sc + ';background:' + sb + '">' + escHtml(initials) + '</div>';
+  }
+  if (staleInfo && !settled) h += '<div class="fc-stale-dot"></div>';
+  h += '</div>';
+  /* Body */
+  h += '<div class="fc-body">';
+  h += '<div class="fc-odds ' + (b.odds >= 0 ? 'positive' : 'negative') + '">' + fmtOdds(b.odds) + '</div>';
+  if (b.stake > 0) {
+    var tw = b.toWin > 0 ? b.toWin : calcToWin(b.stake, b.odds);
+    h += '<div class="fc-meta">$' + b.stake.toFixed(0) + ' → $' + tw.toFixed(0) + '</div>';
+  }
+  if (staleInfo && !settled) h += '<div class="fc-stale-badge">⚠ ended ' + staleInfo.daysPast + 'd ago</div>';
+  if (settled && b.result) h += '<div class="fc-result-badge ' + b.result + '">' + b.result + '</div>';
+  h += '</div>';
+  /* Live odds badge (open bets only) */
+  if (!settled) {
+    var liveInfo = lookupCurrentOdds(b.pick);
+    if (liveInfo) {
+      var diff = liveInfo.odds - b.odds;
+      var mc = diff < 0 ? 'favorable' : diff > 0 ? 'unfavorable' : 'neutral';
+      h += '<div class="fc-live"><div class="fc-live-val ' + mc + '">' + fmtOdds(liveInfo.odds) + '</div>';
+      if (diff !== 0) h += '<div class="fc-live-move ' + mc + '">' + (diff > 0 ? '+' : '') + diff + '</div>';
+      if (liveInfo.bookmaker) h += '<div class="fc-live-src">' + escHtml(liveInfo.bookmaker) + '</div>';
+      h += '</div>';
+    }
+  }
+  /* Actions */
+  h += '<div class="fc-actions">';
+  if (!settled) {
+    h += '<button class="btn-win" onclick="settleFuture(\'' + b.id + '\',\'W\')">Won</button>';
+    h += '<button class="btn-loss" onclick="settleFuture(\'' + b.id + '\',\'L\')">Lost</button>';
+    h += '<button class="btn-void" onclick="deleteBet(\'' + b.id + '\')">Del</button>';
+  } else {
+    h += '<button class="btn-edit" onclick="reopenFuture(\'' + b.id + '\')">Reopen</button>';
+    h += '<button class="btn-void" onclick="deleteBet(\'' + b.id + '\')">Del</button>';
+  }
+  h += '</div>';
+  h += '</div>';
+  return h;
+}
+function renderFutureGroups(list, staleMap, isSettled) {
+  var groups = {}, groupOrder = [];
+  list.forEach(function(b) {
+    var key = getChampionshipGroup(b);
+    if (!groups[key]) { groups[key] = []; groupOrder.push(key); }
+    groups[key].push(b);
+  });
+  var h = '';
+  groupOrder.forEach(function(key) {
+    var grp = groups[key];
+    var sport = grp[0].sport || 'Other';
+    var sc = getSportColor(sport);
+    var sportCls = sport.toLowerCase().replace(/[^a-z]/g, '');
+    var totalRisk = grp.reduce(function(s, b) { return s + (b.stake || 0); }, 0);
+    h += '<div class="futures-group">';
+    h += '<div class="futures-group-header" style="border-left-color:' + sc + (isSettled ? ';opacity:.65' : '') + '">';
+    h += '<span class="sport-tag ' + sportCls + '">' + escHtml(sport) + '</span>';
+    h += '<span class="futures-group-title">' + escHtml(key) + '</span>';
+    h += '<span class="futures-group-count">' + grp.length + '</span>';
+    if (!isSettled && totalRisk > 0) h += '<span class="futures-group-exposure">$' + totalRisk.toFixed(0) + ' risked</span>';
+    h += '</div>';
+    grp.forEach(function(b) { h += renderFutureCardV2(b, staleMap, isSettled); });
+    h += '</div>';
+  });
+  return h;
+}
+function toggleSettledFutures() {
+  var toggle = document.querySelector('.settled-futures-toggle');
+  var body = document.getElementById('settledFuturesBody');
+  if (!toggle || !body) return;
+  toggle.classList.toggle('open');
+  body.classList.toggle('open');
+}
+
 function renderFutures() {
   var el = document.getElementById('futuresList');
   if (!el) return;
@@ -888,73 +1019,26 @@ function renderFutures() {
     return;
   }
   var staleMap = window.__btStaleFutures || {};
-  var isStale = function(b){
-    return !!(staleMap[String(b.id || '')] || staleMap[String(b.txId || '')]);
-  };
-  /* Surface stale (event-ended) futures to the top so they can't be missed */
-  var openStale  = store.futures.filter(function(b){return !b.settled &&  isStale(b) && b.stake > 0;});
-  var openActive = store.futures.filter(function(b){return !b.settled && !isStale(b) && b.stake > 0;});
-  var all = openStale.concat(openActive);
-  var html = '';
-  for (var i = 0; i < all.length; i++) {
-    var b = all[i];
-    var sc = sportClass(b.sport);
-    var liveInfo = lookupCurrentOdds(b.pick);
-    var history = lookupOddsHistory(b.pick);
-    var staleInfo = staleMap[String(b.id || '')] || staleMap[String(b.txId || '')] || null;
-    var staleClass = staleInfo ? ' stale' : '';
-
-    html += '<div class="future-card' + staleClass + '">';
-    if (staleInfo && !b.settled) {
-      html += '<div class="stale-banner">⚠ EVENT ENDED ' + staleInfo.daysPast + 'd AGO — needs settling';
-      if (staleInfo.eventEndDate) html += ' <span class="stale-ended">(' + staleInfo.eventEndDate + ')</span>';
-      html += '</div>';
-    }
-
-    /* ── Top-right live odds badge ── */
-    if (liveInfo && !b.settled) {
-      var moveClass = 'neutral';
-      if (liveInfo.odds < b.odds) moveClass = 'favorable';
-      else if (liveInfo.odds > b.odds) moveClass = 'unfavorable';
-      var diff = liveInfo.odds - b.odds;
-      var diffStr = (diff > 0 ? '+' : '') + diff;
-      html += '<div class="live-odds-badge">';
-      html += '<div class="live-val ' + moveClass + '">' + fmtOdds(liveInfo.odds) + '</div>';
-      if (diff !== 0) html += '<div class="live-move ' + moveClass + '">' + diffStr + '</div>';
-      if (liveInfo.bookmaker) html += '<div class="live-src">' + escHtml(liveInfo.bookmaker) + '</div>';
-      html += '</div>';
-    }
-
-    html += '<span class="sport-tag ' + sc + '">' + escHtml(b.sport || 'Other') + '</span>';
-    html += '<div class="pick">' + escHtml(b.pick) + '</div>';
-
-    /* Placed odds + current odds row */
-    if (liveInfo) {
-      html += '<div class="odds-row">';
-      html += '<span class="your-odds">Placed: ' + fmtOdds(b.odds) + '</span>';
-      /* Implied probability */
-      var impliedPct = liveInfo.odds < 0
-        ? (Math.abs(liveInfo.odds) / (Math.abs(liveInfo.odds) + 100) * 100).toFixed(1)
-        : (100 / (liveInfo.odds + 100) * 100).toFixed(1);
-      html += '<span class="your-odds" style="margin-left:auto">' + impliedPct + '% implied</span>';
-      html += '</div>';
-      html += '<div class="odds-source">Current odds via ' + escHtml(liveInfo.bookmaker || 'The Odds API') + '</div>';
-    } else {
-      html += '<div class="odds">' + fmtOdds(b.odds) + '</div>';
-    }
-
-    html += '<div class="meta">Risk: ' + fmtMoney(b.stake) + ' | To Win: ' + fmtMoney(b.toWin) + '</div>';
-
-    /* ── Line movement sparkline ── */
-    if (history && history.length >= 2) {
-      html += buildSparkline(history, b.odds);
-    }
-
-    html += '<div class="actions">';
-    html += '<button class="btn-win" onclick="settleFuture(\'' + b.id + '\',\'W\')">Win</button>';
-    html += '<button class="btn-loss" onclick="settleFuture(\'' + b.id + '\',\'L\')">Loss</button>';
-    html += '<button class="btn-void" onclick="deleteBet(\'' + b.id + '\')">Del</button>';
+  var isStale = function(b) { return !!(staleMap[String(b.id || '')] || staleMap[String(b.txId || '')]); };
+  var open = store.futures.filter(function(b) { return !b.settled; });
+  var settled = store.futures.filter(function(b) { return !!b.settled; });
+  /* Stale open futures first */
+  open.sort(function(a, b) { return (isStale(a) ? 0 : 1) - (isStale(b) ? 0 : 1); });
+  var html = open.length > 0
+    ? renderFutureGroups(open, staleMap, false)
+    : '<div class="empty-state" style="margin-bottom:16px"><span class="es-icon">🏆</span><div class="es-title">No open futures</div></div>';
+  /* Settled accordion */
+  if (settled.length > 0) {
+    var wCount = settled.filter(function(b) { return b.result === 'W'; }).length;
+    var lCount = settled.filter(function(b) { return b.result === 'L'; }).length;
+    html += '<div class="settled-futures-toggle" onclick="toggleSettledFutures()">';
+    html += '<span class="sft-label">Settled</span>';
+    html += '<span class="sft-count">' + settled.length + '</span>';
+    html += '<span class="sft-record">' + wCount + 'W \xb7 ' + lCount + 'L</span>';
+    html += '<span class="sft-chevron">▾</span>';
     html += '</div>';
+    html += '<div class="settled-futures-body" id="settledFuturesBody">';
+    html += renderFutureGroups(settled, staleMap, true);
     html += '</div>';
   }
   el.innerHTML = html;
