@@ -7,7 +7,19 @@
 ---
 
 ## Last updated
-2026-05-11 · UI/UX design pass — server-down banner, hero stat upgrades, sport colors in :root, typography floor
+2026-05-14 · Status review + SESSION-STATE housekeeping; 3 post-session features merged via PR #6
+
+## What was completed this session (2026-05-14 — housekeeping)
+
+Merged 3 features from branch work that landed after the 2026-05-11 design pass:
+
+- **Rolling bankroll equity curve** (Home tab) — line chart of cumulative P&L over time. Commit `d913d49`.
+- **Consensus pressure badge** on open bet cards — shows public betting % when available. Commit `f0d42bb`.
+- **Peer bets + Action Network sharp action** on Open Bets tab — shows what other users bet on same games + sharp money indicators from Action Network. Commit `9f93396`.
+
+Also cleared stale known issue: credentials were migrated to `.env` (python-dotenv) in Q1 2026 per DECISIONS.md — the old "hardcoded credentials" entry is no longer accurate.
+
+---
 
 ## What was completed this session (2026-05-11, evening — design pass)
 
@@ -88,7 +100,8 @@ Major redesign turning the single-user tracker into a 5-user shared app.
 | Issue | Where it shows | Suspected cause | Not yet tried |
 |---|---|---|---|
 | No formal test suite | — | Project is single-dev, no CI | — |
-| Credentials hardcoded in scraper scripts | refresh_locks25.py, refresh_bovada.py | Never migrated to env vars | Move to .env file |
+| UCL/EPL futures have no live odds badge | Futures tab | Free Odds API tier doesn't include soccer outrights | Bovada Selenium scraper or paid Odds API tier |
+| NCAAMB stale futures need manual settlement | Futures tab → Needs Review | Tournament is over; futures engine flagged them | Click W/L/P for Vanderbilt, Virginia, Tennessee, Arkansas |
 
 ---
 
