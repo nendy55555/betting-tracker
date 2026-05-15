@@ -43,16 +43,16 @@ function renderDashStats() {
   var winPctColorClass = winPct >= 50 ? 'green' : winPct > 0 ? 'red' : 'blue';
 
   el.innerHTML =
-    '<div class="stat-card ' + recordHeroClass + '"><div class="label">Record (settled only)</div><div class="value ' + recordColorClass + '">' + wins + '-' + losses + (pushes > 0 ? '-' + pushes : '') + '</div>' +
+    '<div class="stat-card ' + recordHeroClass + '"><div class="label" data-tip="Wins–Losses–Pushes from settled bets only. Open bets aren\'t counted yet.">Record (settled only)</div><div class="value ' + recordColorClass + '">' + wins + '-' + losses + (pushes > 0 ? '-' + pushes : '') + '</div>' +
       '<div style="font-size:var(--fs-xs);color:var(--text3);margin-top:4px">Straight: '+sW+'-'+sL+' ('+sWinPct.toFixed(0)+'%) | Parlay: '+pW+'-'+pL+' ('+pWinPct.toFixed(0)+'%)</div></div>' +
-    '<div class="stat-card" title="Win rate excludes pushes from denominator"><div class="label">Win Rate</div><div class="value ' + winPctColorClass + '">' + winPct.toFixed(1) + '%</div>' +
+    '<div class="stat-card"><div class="label" data-tip="Percentage of decided bets you\'ve won. Pushes are excluded. ~52.4% is breakeven on -110 lines.">Win Rate</div><div class="value ' + winPctColorClass + '">' + winPct.toFixed(1) + '%</div>' +
       (decisioned < 20 ? '<div style="font-size:var(--fs-xs);color:var(--amber);margin-top:4px">Low sample ('+decisioned+' bets)</div>' : '') + '</div>' +
-    '<div class="stat-card"><div class="label">ROI</div><div class="value ' + roiColorClass + '">' + (roi >= 0 ? '+' : '') + roi.toFixed(1) + '%</div>' +
+    '<div class="stat-card"><div class="label" data-tip="Return on Investment — profit divided by total wagered. +5% means $5 profit per $100 risked.">ROI</div><div class="value ' + roiColorClass + '">' + (roi >= 0 ? '+' : '') + roi.toFixed(1) + '%</div>' +
       '<div style="font-size:var(--fs-xs);color:var(--text3);margin-top:4px">Str: '+(sROI>=0?'+':'')+sROI.toFixed(0)+'% | Par: '+(pROI>=0?'+':'')+pROI.toFixed(0)+'%</div></div>' +
-    '<div class="stat-card ' + plHeroClass + '"><div class="label">Profit / Loss</div><div class="value ' + plColorClass + '" data-countup="' + profit.toFixed(2) + '" data-prefix="' + (profit > 0 ? '+$' : profit < 0 ? '-$' : '$') + '">' + (profit > 0 ? '+' : profit < 0 ? '-' : '') + fmtMoney(profit) + '</div>' +
+    '<div class="stat-card ' + plHeroClass + '"><div class="label" data-tip="Net dollars won or lost across all settled bets in the current filter.">Profit / Loss</div><div class="value ' + plColorClass + '" data-countup="' + profit.toFixed(2) + '" data-prefix="' + (profit > 0 ? '+$' : profit < 0 ? '-$' : '$') + '">' + (profit > 0 ? '+' : profit < 0 ? '-' : '') + fmtMoney(profit) + '</div>' +
       '<div style="font-size:var(--fs-xs);color:var(--text3);margin-top:4px">Str: '+(sProfit>=0?'+':'-')+fmtMoney(sProfit)+' | Par: '+(pProfit>=0?'+':'-')+fmtMoney(pProfit)+'</div></div>' +
-    '<div class="stat-card"><div class="label">Total Wagered</div><div class="value blue">' + fmtMoney(totalStaked) + '</div></div>' +
-    '<div class="stat-card"><div class="label">Open Bets</div><div class="value amber">' + openCount + '</div>' +
+    '<div class="stat-card"><div class="label" data-tip="Sum of every stake you\'ve placed, settled or not. Your total exposure.">Total Wagered</div><div class="value blue">' + fmtMoney(totalStaked) + '</div></div>' +
+    '<div class="stat-card"><div class="label" data-tip="Bets that haven\'t been graded yet — still waiting on the result.">Open Bets</div><div class="value amber">' + openCount + '</div>' +
       '<div style="font-size:var(--fs-xs);color:var(--text3);margin-top:4px">Updated: '+tsStr+'</div></div>';
 
   /* Count-up animation on first render only — flag prevents replay on filter changes */
@@ -943,7 +943,7 @@ function renderFutureCardV2(b, staleMap, isSettled) {
   h += '</div>';
   /* Body */
   h += '<div class="fc-body">';
-  h += '<div class="fc-odds ' + (b.odds >= 0 ? 'positive' : 'negative') + '">' + fmtOdds(b.odds) + '</div>';
+  h += '<div class="fc-odds ' + (b.odds >= 0 ? 'positive' : 'negative') + '" data-tip="The American odds you locked in when you placed this future.">' + fmtOdds(b.odds) + '</div>';
   if (b.stake > 0) {
     var tw = b.toWin > 0 ? b.toWin : calcToWin(b.stake, b.odds);
     h += '<div class="fc-meta">$' + b.stake.toFixed(0) + ' → $' + tw.toFixed(0) + '</div>';
@@ -957,7 +957,7 @@ function renderFutureCardV2(b, staleMap, isSettled) {
     if (liveInfo) {
       var diff = liveInfo.odds - b.odds;
       var mc = diff < 0 ? 'favorable' : diff > 0 ? 'unfavorable' : 'neutral';
-      h += '<div class="fc-live"><div class="fc-live-val ' + mc + '">' + fmtOdds(liveInfo.odds) + '</div>';
+      h += '<div class="fc-live" data-tip="Current market odds. Green = line moved your way (good); red = it moved against you."><div class="fc-live-val ' + mc + '">' + fmtOdds(liveInfo.odds) + '</div>';
       if (diff !== 0) h += '<div class="fc-live-move ' + mc + '">' + (diff > 0 ? '+' : '') + diff + '</div>';
       if (liveInfo.bookmaker) h += '<div class="fc-live-src">' + escHtml(liveInfo.bookmaker) + '</div>';
       h += '</div>';
