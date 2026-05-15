@@ -94,10 +94,10 @@
           </div>
         </div>
         <div class="charts-grid">
-          <div class="chart-card"><div class="chart-title" id="roiChartTitle">ROI Over Time</div><canvas id="roiChart"></canvas></div>
-          <div class="chart-card"><div class="chart-title" id="bankrollChartTitle">Cumulative P/L</div><canvas id="bankrollChart"></canvas></div>
-          <div class="chart-card"><div class="chart-title" id="wlChartTitle">W/L Record Over Time</div><canvas id="wlChart"></canvas></div>
-          <div class="chart-card"><div class="chart-title" id="sportChartTitle">P/L by Sport</div><canvas id="sportChart"></canvas></div>
+          <div class="chart-card"><div class="chart-title" id="roiChartTitle" data-tip="How your return-on-investment trends across each settled bet. Above 0% means you're profitable; 20+ bets gives a more reliable read.">ROI Over Time</div><canvas id="roiChart"></canvas></div>
+          <div class="chart-card"><div class="chart-title" id="bankrollChartTitle" data-tip="Running total of profit and loss after each settled bet — your overall bankroll trajectory.">Cumulative P/L</div><canvas id="bankrollChart"></canvas></div>
+          <div class="chart-card"><div class="chart-title" id="wlChartTitle" data-tip="Wins vs. losses accumulated over time. A widening gap above the loss line means consistent edge.">W/L Record Over Time</div><canvas id="wlChart"></canvas></div>
+          <div class="chart-card"><div class="chart-title" id="sportChartTitle" data-tip="Profit or loss broken down by sport — shows where you're winning vs. bleeding money.">P/L by Sport</div><canvas id="sportChart"></canvas></div>
         </div>
       </div>
       <div class="panel">
@@ -115,7 +115,7 @@
     <!-- ===== ROLLING BANKROLL EQUITY CURVE ===== -->
     <div class="equity-curve-panel" id="equityCurvePanel">
       <div class="equity-curve-header">
-        <span class="equity-curve-title">Bankroll Equity Curve</span>
+        <span class="equity-curve-title" data-tip="Rolling bankroll over time — visualizes drawdowns, hot streaks, and overall growth. The smoother the slope upward, the steadier your edge.">Bankroll Equity Curve</span>
         <div class="equity-pills" id="equityPills"></div>
       </div>
       <div class="equity-curve-body">
@@ -149,10 +149,10 @@
       <h2 style="margin-bottom:16px;font-size:var(--fs-lg)">Analytics</h2>
       <div id="analyticsFilterBar" class="chart-filter-bar"></div>
       <div class="analytics-grid">
-        <div class="analytics-card"><div class="chart-title" id="cumPLTitle">Cumulative Profit/Loss</div><canvas id="cumPLChart"></canvas></div>
-        <div class="analytics-card"><div class="chart-title" id="winRateSportTitle">Win Rate by Sport</div><canvas id="winRateSportChart"></canvas></div>
-        <div class="analytics-card"><div class="chart-title" id="betSizeTitle">Bet Size Distribution</div><canvas id="betSizeChart"></canvas></div>
-        <div class="analytics-card"><div class="chart-title" id="weeklyTitle">Weekly Performance</div><canvas id="weeklyChart"></canvas></div>
+        <div class="analytics-card"><div class="chart-title" id="cumPLTitle" data-tip="Running total of profit/loss after each settled bet — your overall trajectory.">Cumulative Profit/Loss</div><canvas id="cumPLChart"></canvas></div>
+        <div class="analytics-card"><div class="chart-title" id="winRateSportTitle" data-tip="Percentage of bets you've won, broken down by sport. Pushes excluded from the denominator.">Win Rate by Sport</div><canvas id="winRateSportChart"></canvas></div>
+        <div class="analytics-card"><div class="chart-title" id="betSizeTitle" data-tip="How often you bet at each stake range — helps spot stake discipline issues like overbetting on tilt.">Bet Size Distribution</div><canvas id="betSizeChart"></canvas></div>
+        <div class="analytics-card"><div class="chart-title" id="weeklyTitle" data-tip="Profit and loss aggregated by week — shows hot streaks, cold spells, and weekly consistency.">Weekly Performance</div><canvas id="weeklyChart"></canvas></div>
       </div>
     </div>
 
@@ -161,12 +161,12 @@
       <h2 style="margin-bottom:16px;font-size:var(--fs-lg)">Deep Analysis</h2>
       <div id="deepFilterBar" class="chart-filter-bar"></div>
       <div class="analytics-grid" style="margin-bottom:16px">
-        <div class="analytics-card"><div class="chart-title" id="oddsRangeTitle">P/L by Odds Range</div><canvas id="oddsRangeChart"></canvas></div>
-        <div class="analytics-card"><div class="chart-title" id="betTypeROITitle">ROI by Bet Type</div><canvas id="betTypeROIChart"></canvas></div>
-        <div class="analytics-card"><div class="chart-title" id="dowTitle">P/L by Day of Week</div><canvas id="dowChart"></canvas></div>
-        <div class="analytics-card"><div class="chart-title" id="monthlyTitle">Monthly P/L</div><canvas id="monthlyChart"></canvas></div>
-        <div class="analytics-card"><div class="chart-title">CLV Trend (Closing Line Value)</div><canvas id="clvTrendChart"></canvas></div>
-        <div class="analytics-card"><div class="chart-title">Your Edge vs Implied Probability</div><canvas id="edgeModelChart"></canvas></div>
+        <div class="analytics-card"><div class="chart-title" id="oddsRangeTitle" data-tip="Profit and loss grouped by odds tier (heavy favorites, dogs, etc.) — reveals where your edge actually lives.">P/L by Odds Range</div><canvas id="oddsRangeChart"></canvas></div>
+        <div class="analytics-card"><div class="chart-title" id="betTypeROITitle" data-tip="Return on investment broken out by bet type (spread, moneyline, total, parlay, prop, etc.).">ROI by Bet Type</div><canvas id="betTypeROIChart"></canvas></div>
+        <div class="analytics-card"><div class="chart-title" id="dowTitle" data-tip="Which days you tend to win or lose. Helps surface mental-state patterns (Saturday tilt, Sunday discipline, etc.).">P/L by Day of Week</div><canvas id="dowChart"></canvas></div>
+        <div class="analytics-card"><div class="chart-title" id="monthlyTitle" data-tip="Profit and loss totaled by calendar month — your long-term consistency check.">Monthly P/L</div><canvas id="monthlyChart"></canvas></div>
+        <div class="analytics-card"><div class="chart-title" data-tip="Closing Line Value: did the line move toward you after you bet (good) or away (bad)? Positive CLV is the strongest predictor of long-term profit.">CLV Trend (Closing Line Value)</div><canvas id="clvTrendChart"></canvas></div>
+        <div class="analytics-card"><div class="chart-title" data-tip="Your actual win rate plotted against the win rate the odds implied. Bars above the diagonal mean you're beating the market.">Your Edge vs Implied Probability</div><canvas id="edgeModelChart"></canvas></div>
       </div>
       <div id="parlayCorrelationSection" style="margin-bottom:16px"></div>
       <div id="teamAnalysisSection" style="margin-bottom:16px"></div>

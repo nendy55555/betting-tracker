@@ -24,6 +24,38 @@ a{color:var(--blue);text-decoration:none}
 .server-down-banner .server-down-retry{background:var(--amber);color:var(--bg);border:none;padding:6px 14px;border-radius:6px;font-family:inherit;font-size:var(--fs-sm);font-weight:700;cursor:pointer;transition:filter .15s}
 .server-down-banner .server-down-retry:hover{filter:brightness(1.15)}
 
+/* ===== TOOLTIPS — applies to any element with data-tip="..." ===== */
+[data-tip]{position:relative}
+[data-tip]:not(.tip-no-cursor){cursor:help}
+[data-tip]::before,
+[data-tip]::after{position:absolute;opacity:0;pointer-events:none;transition:opacity .14s ease-out,transform .14s ease-out;z-index:9999;transition-delay:0s}
+[data-tip]::before{
+  content:attr(data-tip);
+  bottom:calc(100% + 9px);left:50%;transform:translateX(-50%) translateY(4px);
+  background:linear-gradient(180deg,#1a2632 0%,#111a25 100%);
+  color:var(--text);border:1px solid var(--border);
+  padding:8px 11px;border-radius:7px;
+  font-family:'Outfit',system-ui,sans-serif;
+  font-size:12px;font-weight:500;line-height:1.45;letter-spacing:.01em;
+  text-transform:none;text-align:left;
+  white-space:normal;width:max-content;max-width:240px;
+  box-shadow:0 8px 24px rgba(0,0,0,.55),0 0 0 1px rgba(91,142,247,.06)
+}
+[data-tip]::after{
+  content:'';bottom:calc(100% + 3px);left:50%;
+  transform:translateX(-50%) translateY(4px);
+  border:6px solid transparent;border-top-color:#1a2632
+}
+[data-tip]:hover::before,[data-tip]:hover::after,
+[data-tip]:focus-visible::before,[data-tip]:focus-visible::after{
+  opacity:1;transform:translateX(-50%) translateY(0);transition-delay:.25s
+}
+/* Anchor variant: tooltip below element (use class .tip-below for items near top of viewport) */
+[data-tip].tip-below::before{bottom:auto;top:calc(100% + 9px);transform:translateX(-50%) translateY(-4px)}
+[data-tip].tip-below::after{bottom:auto;top:calc(100% + 3px);border-top-color:transparent;border-bottom-color:#1a2632;transform:translateX(-50%) translateY(-4px)}
+[data-tip].tip-below:hover::before,[data-tip].tip-below:hover::after,
+[data-tip].tip-below:focus-visible::before,[data-tip].tip-below:focus-visible::after{transform:translateX(-50%) translateY(0)}
+
 /* ===== SKELETON LOADERS ===== */
 .skeleton-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;padding:10px 12px;overflow:hidden;position:relative}
 .skeleton-card::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.04) 50%,transparent 100%);animation:skeletonShimmer 1.4s infinite;transform:translateX(-100%)}
