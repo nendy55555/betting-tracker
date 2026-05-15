@@ -100,9 +100,11 @@ function renderBetLog() {
     var cleanPick    = buildPickDisplay(b) || '—';
     html += '<td class="bl-matchup bl-muted" title="' + escHtml(b.matchup || '') + '">' + escHtml(cleanMatchup) + '</td>';
     html += '<td class="bl-pick" title="' + escHtml(b.pick || '') + '">' + escHtml(cleanPick) + '</td>';
-    html += '<td class="bl-num bl-muted">' + fmtOdds(b.odds) + '</td>';
+    var oddsKnown = b.odds && Math.abs(b.odds) >= 100;
+    var toWinKnown = b.toWin > 0;
+    html += '<td class="bl-num bl-muted">' + fmtOdds(effectiveOdds(b)) + (oddsKnown ? '' : '*') + '</td>';
     html += '<td class="bl-num">' + fmtMoney(b.stake || 0) + '</td>';
-    html += '<td class="bl-num bl-muted">' + fmtMoney(b.toWin || 0) + '</td>';
+    html += '<td class="bl-num bl-muted">' + fmtMoney(effectiveToWin(b)) + (toWinKnown ? '' : '*') + '</td>';
     html += '<td class="bl-num ' + plClass + '">' + plStr + '</td>';
     html += '<td><span class="bl-result-badge ' + resultKey + '">' + resultLabel + '</span></td>';
     html += '<td><button class="bl-edit-btn" onclick="editBet(\'' + b.id + '\')" title="Manually edit this bet">Edit</button></td>';
@@ -111,9 +113,34 @@ function renderBetLog() {
   tbody.innerHTML = html;
 }
 
+/* Return the best-guess odds for a bet.
+   Priority: stored odds → infer from stake/toWin → -110 default. */
+function effectiveOdds(b) {
+  if (b.odds && Math.abs(b.odds) >= 100) return b.odds;
+  if (b.stake > 0 && b.toWin > 0) {
+    return b.toWin >= b.stake
+      ? Math.round(b.toWin / b.stake * 100)
+      : -Math.round(b.stake / b.toWin * 100);
+  }
+  return -110;
+}
+
+/* Return the best-guess toWin for a bet.
+   Uses stored toWin when valid; otherwise calculates from effectiveOdds. */
+function effectiveToWin(b) {
+  if (b.toWin > 0) return b.toWin;
+  if (b.stake > 0) {
+    var odds = effectiveOdds(b);
+    return odds > 0
+      ? +(b.stake * odds / 100).toFixed(2)
+      : +(b.stake * 100 / Math.abs(odds)).toFixed(2);
+  }
+  return 0;
+}
+
 function betLogPL(b) {
   if (!b.settled || !b.result) return 0;
-  if (b.result === 'W') return b.toWin || 0;
+  if (b.result === 'W') return effectiveToWin(b);
   if (b.result === 'L') return -(b.stake || 0);
   return 0; /* Push */
 }
