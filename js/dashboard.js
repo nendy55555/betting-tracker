@@ -108,7 +108,7 @@ function renderOpenBets() {
     var isMulti = b.type === 'parlay' || /parlay/i.test(b.matchup || '');
     /* For open bets, show espnMatchup (real opponent) as matchup line when available */
     var displayMatchup = b.espnMatchup || b.matchup || '';
-    var topLine = isMulti ? (displayMatchup || 'Multiple Bets') : escHtml(b.pick);
+    var topLine = isMulti ? escHtml(shortenMatchupDisplay(displayMatchup) || 'Multiple Bets') : escHtml(shortenPickLine(cleanPickString(b.pick || '')));
 
     html += '<div class="bet-card" id="card-' + b.id + '">';
     /* Compact summary: pick first, then sport/units, game time below */
@@ -116,7 +116,7 @@ function renderOpenBets() {
     html += '<span class="matchup-line">' + topLine + '</span>';
     /* Show real matchup as sub-line if pick doesn't already contain both teams */
     if (!isMulti && displayMatchup && displayMatchup !== (b.pick || '') && !/\bvs\.?\s+(?:opponent|tbd|tba)\b/i.test(displayMatchup)) {
-      html += '<span class="game-time-row" style="color:var(--text3);margin-top:1px">' + escHtml(displayMatchup) + '</span>';
+      html += '<span class="game-time-row" style="color:var(--text3);margin-top:1px">' + escHtml(shortenMatchupDisplay(displayMatchup)) + '</span>';
     }
     html += '<span class="bet-row">';
     html += '<span class="sport-tag ' + sc + '">' + escHtml(b.sport || '?') + '</span>';
@@ -383,10 +383,8 @@ function cleanPickString(pick) {
 }
 function displayPickForCard(b) {
   var pick = cleanPickString(b.pick);
-  if (!isGenericPick(pick)) return escHtml(pick);
-  /* If ESPN enriched this bet, show the matchup + bet type */
-  if (b.espnMatchup) return escHtml(betTypeLabel(b.type) + ' \u2014 ' + b.espnMatchup);
-  /* Otherwise show bet type + odds */
+  if (!isGenericPick(pick)) return escHtml(shortenPickLine(pick));
+  if (b.espnMatchup) return escHtml(betTypeLabel(b.type) + ' \u2014 ' + shortenMatchupDisplay(b.espnMatchup));
   return escHtml(betTypeLabel(b.type) + ' ' + fmtOdds(b.odds));
 }
 /* ===== BET SORT TIME =====
@@ -602,7 +600,7 @@ function renderBetCardInner(b) {
   } else {
     cardTopLine = displayPickForCard(b);
   }
-  html += '<span class="matchup-line" style="font-size:0.88em">' + cardTopLine + '</span>';
+  html += '<span class="matchup-line">' + cardTopLine + '</span>';
   html += '<span class="bet-row">';
   html += '<span class="stake-short">' + fmtMoney(b.stake) + ' @ ' + fmtOdds(b.odds) + '</span>';
   html += '<span class="result-badge ' + b.result + '">' + b.result + ' ' + pnl + '</span>';
