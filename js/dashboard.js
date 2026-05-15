@@ -913,34 +913,46 @@ function renderFutures() {
       html += '</div>';
     }
 
-    /* ── Top-right live odds badge ── */
-    if (liveInfo && !b.settled) {
+    /* ── Top-right odds badge: your placed odds (large) + current odds (smaller) ── */
+    if (!b.settled) {
       var moveClass = 'neutral';
-      if (liveInfo.odds < b.odds) moveClass = 'favorable';
-      else if (liveInfo.odds > b.odds) moveClass = 'unfavorable';
-      var diff = liveInfo.odds - b.odds;
-      var diffStr = (diff > 0 ? '+' : '') + diff;
+      if (liveInfo) {
+        if (liveInfo.odds < b.odds) moveClass = 'favorable';
+        else if (liveInfo.odds > b.odds) moveClass = 'unfavorable';
+      }
       html += '<div class="live-odds-badge">';
-      html += '<div class="live-val ' + moveClass + '">' + fmtOdds(liveInfo.odds) + '</div>';
-      if (diff !== 0) html += '<div class="live-move ' + moveClass + '">' + diffStr + '</div>';
-      if (liveInfo.bookmaker) html += '<div class="live-src">' + escHtml(liveInfo.bookmaker) + '</div>';
+      html += '<div class="fc-badge-lbl">your odds</div>';
+      html += '<div class="fc-placed-val">' + fmtOdds(b.odds) + '</div>';
+      if (liveInfo) {
+        html += '<div class="fc-badge-lbl" style="margin-top:5px">now</div>';
+        html += '<div class="fc-cur-val ' + moveClass + '">' + fmtOdds(liveInfo.odds) + '</div>';
+        if (liveInfo.bookmaker) html += '<div class="live-src">' + escHtml(liveInfo.bookmaker) + '</div>';
+      }
       html += '</div>';
     }
 
+    /* ── Team logo + sport tag ── */
+    var logoUrl = (window.BT_teamLogo && b.pick) ? window.BT_teamLogo(b.pick, b.sport || '') : null;
+    var initials = (window.BT_teamInitials && b.pick) ? window.BT_teamInitials(b.pick) : '?';
+    html += '<div class="fc-header">';
+    html += '<div class="fc-logo-wrap">';
+    if (logoUrl) {
+      html += '<img class="fc-logo-img" src="' + escHtml(logoUrl) + '" alt="" ' +
+        'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">';
+    }
+    html += '<div class="fc-logo-initials"' + (logoUrl ? ' style="display:none"' : '') + '>' + escHtml(initials) + '</div>';
+    html += '</div>';
     html += '<span class="sport-tag ' + sc + '">' + escHtml(b.sport || 'Other') + '</span>';
+    html += '</div>';
+
     html += '<div class="pick">' + escHtml(b.pick) + '</div>';
 
-    /* Placed odds + current odds row */
+    /* Implied probability + bookmaker source */
     if (liveInfo) {
-      html += '<div class="odds-row">';
-      html += '<span class="your-odds">Placed: ' + fmtOdds(b.odds) + '</span>';
-      /* Implied probability */
       var impliedPct = liveInfo.odds < 0
         ? (Math.abs(liveInfo.odds) / (Math.abs(liveInfo.odds) + 100) * 100).toFixed(1)
         : (100 / (liveInfo.odds + 100) * 100).toFixed(1);
-      html += '<span class="your-odds" style="margin-left:auto">' + impliedPct + '% implied</span>';
-      html += '</div>';
-      html += '<div class="odds-source">Current odds via ' + escHtml(liveInfo.bookmaker || 'The Odds API') + '</div>';
+      html += '<div class="odds-source">' + impliedPct + '% implied · ' + escHtml(liveInfo.bookmaker || 'The Odds API') + '</div>';
     } else {
       html += '<div class="odds">' + fmtOdds(b.odds) + '</div>';
     }

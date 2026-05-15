@@ -225,7 +225,7 @@ a{color:var(--blue);text-decoration:none}
 .future-card.stale .stale-banner{display:flex;align-items:center;gap:6px;background:linear-gradient(90deg,rgba(255,68,85,0.18),rgba(255,68,85,0.05));color:var(--red);font-weight:700;font-size:var(--fs-sm);letter-spacing:.04em;text-transform:uppercase;padding:6px 10px;border-radius:5px;margin:-4px -4px 10px;border:1px solid rgba(255,68,85,0.35)}
 .future-card.stale .stale-banner .stale-ended{color:#ff8c99;font-weight:500;text-transform:none;letter-spacing:0;margin-left:auto}
 .future-card .sport-tag{font-size:var(--fs-xs);text-transform:uppercase;font-weight:700;letter-spacing:.8px;padding:2px 8px;border-radius:4px;display:inline-block;margin-bottom:8px}
-.future-card .pick{font-weight:700;font-size:var(--fs-md);margin-bottom:4px;padding-right:90px}
+.future-card .pick{font-weight:700;font-size:var(--fs-md);margin-bottom:4px;padding-right:80px}
 .future-card .odds{color:var(--blue);font-weight:700;margin-bottom:4px}
 .future-card .odds-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
 .future-card .odds-row .your-odds{color:var(--text2);font-size:var(--fs-base)}
@@ -237,17 +237,20 @@ a{color:var(--blue);text-decoration:none}
 .future-card .meta{font-size:var(--fs-sm);color:var(--text2)}
 .future-card .actions{display:flex;gap:6px;margin-top:10px}
 .future-card .actions button{flex:1;padding:6px;border:none;border-radius:5px;font-family:inherit;font-size:var(--fs-sm);font-weight:700;cursor:pointer;text-transform:uppercase}
-/* Current odds badge — top-right corner of each futures card */
-.live-odds-badge{position:absolute;top:12px;right:12px;text-align:right;min-width:56px}
-.live-odds-badge .live-val{font-size:var(--fs-md);font-weight:700;line-height:1.1}
-.live-odds-badge .live-val.favorable{color:var(--green)}
-.live-odds-badge .live-val.unfavorable{color:var(--red)}
-.live-odds-badge .live-val.neutral{color:var(--blue)}
-.live-odds-badge .live-move{font-size:var(--fs-xs);font-weight:700;padding:1px 5px;border-radius:3px;margin-top:2px;display:inline-block}
-.live-odds-badge .live-move.favorable{background:rgba(0,208,132,.15);color:var(--green)}
-.live-odds-badge .live-move.unfavorable{background:rgba(255,71,87,.15);color:var(--red)}
-.live-odds-badge .live-move.neutral{background:rgba(136,153,166,.1);color:var(--text2)}
+/* Odds badge — top-right corner of each futures card */
+.live-odds-badge{position:absolute;top:12px;right:12px;text-align:right;min-width:64px}
+.live-odds-badge .fc-badge-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.6px;font-weight:600;color:var(--text3);line-height:1}
+.live-odds-badge .fc-placed-val{font-size:var(--fs-lg);font-weight:800;color:var(--text);line-height:1.15}
+.live-odds-badge .fc-cur-val{font-size:var(--fs-base);font-weight:700;line-height:1.2}
+.live-odds-badge .fc-cur-val.favorable{color:var(--green)}
+.live-odds-badge .fc-cur-val.unfavorable{color:var(--red)}
+.live-odds-badge .fc-cur-val.neutral{color:var(--blue)}
 .live-odds-badge .live-src{font-size:var(--fs-xs);color:var(--text3);margin-top:1px}
+/* Logo + sport-tag row */
+.future-card .fc-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.future-card .fc-logo-wrap{width:36px;height:36px;flex-shrink:0;border-radius:6px;overflow:hidden;background:var(--surface2);display:flex;align-items:center;justify-content:center}
+.future-card .fc-logo-img{width:32px;height:32px;object-fit:contain}
+.future-card .fc-logo-initials{width:36px;height:36px;border-radius:6px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:var(--fs-xs);font-weight:800;color:var(--text2);text-align:center;line-height:1}
 .line-movement{margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
 .line-movement .lm-label{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.6px;color:var(--text3);font-weight:600;margin-bottom:4px}
 .line-movement .lm-sparkline{display:flex;align-items:flex-end;gap:2px;height:28px}
@@ -447,7 +450,7 @@ a{color:var(--blue);text-decoration:none}
   .stat-card .value{font-size:var(--fs-lg)}
   .bet-card-summary{padding:8px 10px}
   .future-card{padding:12px}
-  .future-card .pick{font-size:var(--fs-md);padding-right:80px}
+  .future-card .pick{font-size:var(--fs-md);padding-right:72px}
   .filter-btn,.fbtn,.tp-btn,.bl-filter-btn{padding:10px 12px!important;font-size:var(--fs-sm);min-height:44px}
   .refresh-btn,.settings-btn{padding:10px 12px;min-height:44px}
   .btn-win,.btn-loss,.btn-push,.btn-void,.btn-edit,.btn-slip{padding:10px 8px!important;font-size:var(--fs-sm)!important;min-height:44px}
