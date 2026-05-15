@@ -104,7 +104,7 @@ a{color:var(--blue);text-decoration:none}
 /* Compact bet cards with expand/collapse */
 .bet-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;transition:border-color .15s,box-shadow .15s;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.3)}
 .bet-card:hover{border-color:rgba(91,142,247,.3);box-shadow:0 2px 8px rgba(0,0,0,.4)}
-.bet-card-summary{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:10px 12px;cursor:pointer;user-select:none}
+.bet-card-summary{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;padding:8px 12px;cursor:pointer;user-select:none}
 .bet-card-summary .sport-tag{font-size:var(--fs-sm);text-transform:uppercase;font-weight:700;letter-spacing:.7px;padding:2px 7px;border-radius:3px;flex-shrink:0;white-space:nowrap}
 .bet-card-summary .game-time-row{width:100%;font-size:var(--fs-sm);color:var(--amber);margin-top:-2px;padding-left:2px}
 .sport-tag.nba{background:rgba(255,156,51,.15);color:var(--sport-nba)}
@@ -116,7 +116,7 @@ a{color:var(--blue);text-decoration:none}
 .sport-tag.soccer,.sport-tag.mls{background:rgba(0,208,132,.15);color:var(--green)}
 .sport-tag.other{background:rgba(143,163,180,.15);color:var(--text2)}
 .source-tag{font-size:var(--fs-xs);text-transform:uppercase;font-weight:600;letter-spacing:.5px;padding:2px 6px;border-radius:3px;flex-shrink:0;white-space:nowrap;background:rgba(136,153,166,.12);color:var(--text2)}
-.bet-card-summary .matchup-line{font-weight:700;font-size:var(--fs-sm);color:var(--text);width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bet-card-summary .matchup-line{font-weight:600;font-size:var(--fs-xs);color:var(--text);width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bet-card-summary .bet-row{display:flex;align-items:center;gap:8px;width:100%}
 .bet-card-summary .pick-short{font-weight:600;font-size:var(--fs-sm);color:var(--blue);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bet-card-summary .odds-short{font-size:var(--fs-sm);color:var(--text2);font-weight:600;flex-shrink:0}
